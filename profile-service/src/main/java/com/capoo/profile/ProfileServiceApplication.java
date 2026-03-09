@@ -1,4 +1,4 @@
-package com.devteria.profile;
+package com.capoo.profile;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -3,14 +3,17 @@ package com.capoo.identity.service;
 import com.capoo.identity.constant.PredefinedRole;
 import com.capoo.identity.dto.request.PasswordCreationRequest;
 import com.capoo.identity.dto.request.UserCreationRequest;
+import com.capoo.identity.dto.request.UserProfileCreationRequest;
 import com.capoo.identity.dto.request.UserUpdateRequest;
 import com.capoo.identity.dto.response.UserResponse;
 import com.capoo.identity.entity.Role;
 import com.capoo.identity.entity.User;
 import com.capoo.identity.exception.AppException;
+import com.capoo.identity.mapper.ProfileMapper;
 import com.capoo.identity.mapper.UserMapper;
 import com.capoo.identity.repository.RoleRepository;
 import com.capoo.identity.repository.UserRepository;
+import com.capoo.identity.repository.httpClient.profileClient.ProfileClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -34,6 +37,8 @@ public class UserService {
     UserRepository userRepository;
     RoleRepository roleRepository;
     UserMapper userMapper;
+    ProfileClient profileClient;
+    ProfileMapper profileMapper;
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         if (userRepository.existsByUsername(userCreationRequest.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
         User user = userMapper.toUser(userCreationRequest);
@@ -43,7 +48,10 @@ public class UserService {
         roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
 
         user.setRoles(roles);
-        return userMapper.toUserResponse(userRepository.save(user));
+        user= userRepository.save(user);
+        UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(user);
+        profileClient.createUserProfileForUser(userProfile);
+        return userMapper.toUserResponse(user);
     }
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse updateUser(String userId, UserUpdateRequest request) {

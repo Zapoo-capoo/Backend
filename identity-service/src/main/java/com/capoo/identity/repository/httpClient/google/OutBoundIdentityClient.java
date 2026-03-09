@@ -1,4 +1,4 @@
-package com.capoo.identity.repository.httClient;
+package com.capoo.identity.repository.httpClient.google;
 
 import com.capoo.identity.dto.request.ExchangeTokenRequest;
 import com.capoo.identity.dto.response.ExchangeTokenResponse;
