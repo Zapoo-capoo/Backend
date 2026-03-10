@@ -3,7 +3,6 @@ package com.capoo.profile.controller;
 import com.capoo.profile.dto.ApiResponse;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
-import com.capoo.profile.entity.UserProfile;
 import com.capoo.profile.service.UserProfileService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -14,24 +13,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/user-profiles")
+@RequestMapping("/internal/user-profiles")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class UserProfileController {
+public class InternalUserProfileController {
     UserProfileService userProfileService;
-    @GetMapping("/{profileId}")
-    ApiResponse<UserProfileReponse> getUserProfile(@PathVariable String profileId) {
+    @PostMapping
+    ApiResponse<UserProfileReponse> createUser(@RequestBody UserProfileCreationRequest request) {
         return ApiResponse.<UserProfileReponse>builder()
-                .result(userProfileService.getUserProfile(profileId))
+                .result(userProfileService.createUserProfile(request))
                 .build();
     }
-    @GetMapping()
-    ApiResponse<List<UserProfileReponse>> getAllUserProfiles() {
-        return ApiResponse.<List<UserProfileReponse>>builder()
-                .result(userProfileService.getUserProfiles())
-                .build();
-    }
-
-
 }
