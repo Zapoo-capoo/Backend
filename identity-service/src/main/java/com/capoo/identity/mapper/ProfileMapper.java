@@ -14,5 +14,6 @@ public interface ProfileMapper {
     @Mapping(source = "id", target = "userId")
     UserProfileCreationRequest toUserProfileCreationRequest(User user);
 
+    UserProfileCreationRequest toUserProfileCreationRequest(UserCreationRequest userCreationRequest);
 }
 

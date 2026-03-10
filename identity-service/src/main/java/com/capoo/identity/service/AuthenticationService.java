@@ -9,10 +9,12 @@ import com.capoo.identity.entity.Role;
 import com.capoo.identity.entity.User;
 import com.capoo.identity.exception.AppException;
 import com.capoo.identity.exception.ErrorCode;
+import com.capoo.identity.mapper.ProfileMapper;
 import com.capoo.identity.repository.InvalidatedTokenRepository;
 import com.capoo.identity.repository.httpClient.google.OutBoundIdentityClient;
 import com.capoo.identity.repository.UserRepository;
 import com.capoo.identity.repository.httpClient.google.OutboundUserClient;
+import com.capoo.identity.repository.httpClient.profileClient.ProfileClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -43,6 +45,8 @@ public class AuthenticationService {
     final InvalidatedTokenRepository invalidatedTokenRepository;
     final OutBoundIdentityClient outBoundIdentityClient;
     final OutboundUserClient outboundUserClient;
+     final ProfileClient profileClient;
+     final ProfileMapper profileMapper;
     @Value("${jwt.signerKey}")
     String signerKey;
     @Value("${jwt.valid-duration}")
@@ -102,10 +106,14 @@ public class AuthenticationService {
         var user=userRepository.findByUsername(userInfo.getEmail()).orElseGet(
                 () -> userRepository.save(User.builder()
                         .username(userInfo.getEmail())
-                        .firstName(userInfo.getGivenName())
-                        .lastName(userInfo.getFamilyName())
                         .roles(roles)
                         .build()));
+        //create profile for user
+        UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(user);
+        userProfile.setUserId(user.getId());
+        userProfile.setFirstName(userInfo.getFamilyName());
+        userProfile.setLastName(userInfo.getGivenName());
+        profileClient.createUserProfileForUser(userProfile);
         //Generate token for user
         var token=generateToken(user);
 

@@ -40,16 +40,18 @@ public class UserService {
     ProfileClient profileClient;
     ProfileMapper profileMapper;
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
+        //Check if user exist
         if (userRepository.existsByUsername(userCreationRequest.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
         User user = userMapper.toUser(userCreationRequest);
+        //Create user
         user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
-
         HashSet<Role> roles=new HashSet<>();
         roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
-
         user.setRoles(roles);
         user= userRepository.save(user);
-        UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(user);
+        //Create profile for user
+        UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(userCreationRequest);
+        userProfile.setUserId(user.getId());
         profileClient.createUserProfileForUser(userProfile);
         return userMapper.toUserResponse(user);
     }
