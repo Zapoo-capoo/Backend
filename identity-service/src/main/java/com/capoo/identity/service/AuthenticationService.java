@@ -196,7 +196,8 @@ public class AuthenticationService {
                     .toInstant()
                     .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
                     .toEpochMilli())
-                    : signedJWT.getJWTClaimsSet().getExpirationTime();            boolean verified = signedJWT.verify(verifier);
+                    : signedJWT.getJWTClaimsSet().getExpirationTime();
+            boolean verified = signedJWT.verify(verifier);
             if (!(verified && expiryTime.after(new Date())))
                 throw new AppException(ErrorCode.UNAUTHENTICATED);
             if (invalidatedTokenRepository.existsById(
