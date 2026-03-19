@@ -113,9 +113,10 @@ public class AuthenticationService {
         userProfile.setUserId(user.getId());
         userProfile.setFirstName(userInfo.getFamilyName());
         userProfile.setLastName(userInfo.getGivenName());
-        profileClient.createUserProfileForUser(userProfile);
         //Generate token for user
         var token=generateToken(user);
+        profileClient.createUserProfileForUser(userProfile);
+
 
         return  AuthenticationResponse.builder()
                 .token(token)

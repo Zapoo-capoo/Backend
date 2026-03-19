@@ -52,7 +52,6 @@ public class ApplicationInitConfig {
                 userProfile.setUserId(user.getId());
                 userProfile.setFirstName("admin");
                 userProfile.setLastName("admin");
-                profileClient.createUserProfileForUser(userProfile);
 
                 log.warn("admin user has been created with default password: admin, please change it");
             }

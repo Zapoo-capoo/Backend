@@ -14,6 +14,8 @@ import com.capoo.identity.mapper.UserMapper;
 import com.capoo.identity.repository.RoleRepository;
 import com.capoo.identity.repository.UserRepository;
 import com.capoo.identity.repository.httpClient.profileClient.ProfileClient;
+import jakarta.servlet.Servlet;
+import jakarta.servlet.ServletRequestAttributeEvent;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.capoo.identity.exception.ErrorCode;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +55,9 @@ public class UserService {
         //Create profile for user
         UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(userCreationRequest);
         userProfile.setUserId(user.getId());
+        ServletRequestAttributes attributes = (ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        var header= attributes.getRequest().getHeader("Authorization");
+
         profileClient.createUserProfileForUser(userProfile);
         return userMapper.toUserResponse(user);
     }

@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 public class InternalUserProfileController {
     UserProfileService userProfileService;
-    @PostMapping
+    @PostMapping()
     ApiResponse<UserProfileReponse> createUser(@RequestBody UserProfileCreationRequest request) {
         return ApiResponse.<UserProfileReponse>builder()
                 .result(userProfileService.createUserProfile(request))
