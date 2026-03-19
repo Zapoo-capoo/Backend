@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
+            "/email/send"
     };
 
     private final CustomJwtDecoder customJwtDecoder;
