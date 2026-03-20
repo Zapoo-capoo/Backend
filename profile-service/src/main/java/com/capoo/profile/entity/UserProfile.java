@@ -26,9 +26,10 @@ public class UserProfile {
 
     String username;
     String firstName;
+    String city;
     LocalDate dob;
     String lastName;
-    private String avatarUrl;
+    String avatar;
 
 
 

@@ -1,6 +1,7 @@
 package com.capoo.profile.controller;
 
 import com.capoo.profile.dto.ApiResponse;
+import com.capoo.profile.dto.request.UpdateProfileRequest;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.entity.UserProfile;
@@ -11,6 +12,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -32,6 +34,25 @@ public class UserProfileController {
     ApiResponse<List<UserProfileReponse>> getAllUserProfiles() {
         return ApiResponse.<List<UserProfileReponse>>builder()
                 .result(userProfileService.getUserProfiles())
+                .build();
+    }
+    @GetMapping("/my-profile")
+    ApiResponse<UserProfileReponse> getMyProfile() {
+        return ApiResponse.<UserProfileReponse>builder()
+                .result(userProfileService.getMyProfile())
+                .build();
+    }
+    @PutMapping("/my-profile")
+    ApiResponse<UserProfileReponse> updateMyProfile(@RequestBody UpdateProfileRequest request) {
+        return ApiResponse.<UserProfileReponse>builder()
+                .result(userProfileService.updateMyProfile(request))
+                .build();
+    }
+
+    @PutMapping("/avatar")
+    ApiResponse<UserProfileReponse> updateAvatar(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.<UserProfileReponse>builder()
+                .result(userProfileService.updateAvatar(file))
                 .build();
     }
 

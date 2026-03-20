@@ -16,5 +16,5 @@ public class UserProfileCreationRequest {
     String firstName;
     String lastName;
     LocalDate dob;
-    String avatarUrl;
+    String avatar;
 }

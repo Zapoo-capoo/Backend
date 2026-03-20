@@ -1,5 +1,6 @@
 package com.capoo.profile.mapper;
 
+import com.capoo.profile.dto.request.UpdateProfileRequest;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.entity.UserProfile;
@@ -15,6 +16,7 @@ public interface UserProfileMapper {
 
     UserProfile toUserProfile(UserProfileCreationRequest request);
     UserProfileReponse toUserProfileResponse(UserProfile userProfile);
+    void update(@MappingTarget UserProfile entity, UpdateProfileRequest request);
 
     // @Mapping(target = "roles", ignore = true)
     //   void updateUser(@MappingTarget UserProfile user, User request);

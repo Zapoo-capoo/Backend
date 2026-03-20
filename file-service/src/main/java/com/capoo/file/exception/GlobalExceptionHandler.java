@@ -1,7 +1,7 @@
-package com.capoo.profile.exception;
+package com.capoo.file.exception;
 
-import com.capoo.profile.dto.ApiResponse;
-import jakarta.validation.*;
+import com.capoo.file.dto.ApiResponse;
+import jakarta.validation.ConstraintViolation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -18,11 +18,11 @@ public class GlobalExceptionHandler {
 
     private static final String MIN_ATTRIBUTE = "min";
 
-    @ExceptionHandler(value = RuntimeException.class)
-    public ResponseEntity<ApiResponse> handlingRuntimeException(RuntimeException exception) {
+    @ExceptionHandler(value = Exception.class)
+    ResponseEntity<ApiResponse> handlingRuntimeException(RuntimeException exception) {
         log.error("Exception: ", exception);
-
         ApiResponse apiResponse = new ApiResponse();
+
         apiResponse.setCode(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode());
         apiResponse.setMessage(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage());
 
