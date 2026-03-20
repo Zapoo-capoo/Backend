@@ -1,6 +1,7 @@
 package com.capoo.profile.service;
 
 
+import com.capoo.profile.dto.request.SearchUserRequest;
 import com.capoo.profile.dto.request.UpdateProfileRequest;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
@@ -89,5 +90,14 @@ public class UserProfileService {
         profile.setAvatar(response.getResult().getUrl());
 
         return userProfileMapper.toUserProfileResponse(userProfileRepository.save(profile));
+    }
+
+    public List<UserProfileReponse> search(SearchUserRequest request) {
+        var userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<UserProfile> userProfiles = userProfileRepository.findAllByUsernameLike(request.getKeyword());
+        return userProfiles.stream()
+                .filter(userProfile -> !userId.equals(userProfile.getUserId()))
+                .map(userProfileMapper::toUserProfileResponse)
+                .toList();
     }
 }

@@ -1,6 +1,7 @@
 package com.capoo.profile.controller;
 
 import com.capoo.profile.dto.ApiResponse;
+import com.capoo.profile.dto.request.SearchUserRequest;
 import com.capoo.profile.dto.request.UpdateProfileRequest;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
@@ -53,6 +54,12 @@ public class UserProfileController {
     ApiResponse<UserProfileReponse> updateAvatar(@RequestParam("file") MultipartFile file) {
         return ApiResponse.<UserProfileReponse>builder()
                 .result(userProfileService.updateAvatar(file))
+                .build();
+    }
+    @PostMapping("/search")
+    ApiResponse<List<UserProfileReponse>> search(@RequestBody SearchUserRequest request) {
+        return ApiResponse.<List<UserProfileReponse>>builder()
+                .result(userProfileService.search(request))
                 .build();
     }
 
