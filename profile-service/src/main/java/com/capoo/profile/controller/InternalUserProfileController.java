@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/internal/user-profiles")
+@RequestMapping("/internal/users")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -23,6 +23,13 @@ public class InternalUserProfileController {
     ApiResponse<UserProfileReponse> createUser(@RequestBody UserProfileCreationRequest request) {
         return ApiResponse.<UserProfileReponse>builder()
                 .result(userProfileService.createUserProfile(request))
+                .build();
+    }
+    @GetMapping("/{userId}")
+    ApiResponse<UserProfileReponse> getProfileByUserId(
+            @PathVariable String userId) {
+        return ApiResponse.<UserProfileReponse>builder()
+                .result(userProfileService.getProfileByUserId(userId))
                 .build();
     }
 }

@@ -21,9 +21,10 @@ public class UserProfile {
     @Id
     @GeneratedValue(generatorClass = UUIDStringGenerator.class)
     String id;
-
     @Property("userId")
     String userId;
+
+    String username;
     String firstName;
     LocalDate dob;
     String lastName;

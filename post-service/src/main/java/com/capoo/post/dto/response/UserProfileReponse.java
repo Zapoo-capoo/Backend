@@ -1,4 +1,5 @@
-package com.capoo.profile.dto.request;
+package com.capoo.post.dto.response;
+
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -10,9 +11,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserProfileCreationRequest {
-    String userId;
+public class UserProfileReponse {
+    String id;
     String username;
+    String email;
     String firstName;
     String lastName;
     LocalDate dob;
