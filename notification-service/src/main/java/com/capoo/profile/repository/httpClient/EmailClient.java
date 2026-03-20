@@ -11,5 +11,5 @@ import org.springframework.web.bind.annotation.RequestHeader;
 @FeignClient(name="email-service", url = "https://api.brevo.com")
 public interface EmailClient {
     @PostMapping(value = "/v3/smtp/email",produces = MediaType.APPLICATION_JSON_VALUE)
-    EmailReponse sendEmail(@RequestHeader("api-Key") String apiKey, @RequestBody EmailRequest body);
+    EmailReponse sendEmail(@RequestHeader("api-key") String apiKey, @RequestBody EmailRequest body);
 }

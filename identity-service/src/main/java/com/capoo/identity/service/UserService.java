@@ -8,6 +8,7 @@ import com.capoo.identity.dto.request.UserUpdateRequest;
 import com.capoo.identity.dto.response.UserResponse;
 import com.capoo.identity.entity.Role;
 import com.capoo.identity.entity.User;
+import com.capoo.event.dto.NotificationEvent;
 import com.capoo.identity.exception.AppException;
 import com.capoo.identity.mapper.ProfileMapper;
 import com.capoo.identity.mapper.UserMapper;
@@ -42,7 +43,7 @@ public class UserService {
     ProfileClient profileClient;
     ProfileMapper profileMapper;
 
-    KafkaTemplate<String,String> kafkaTemplate;
+    KafkaTemplate<String,Object> kafkaTemplate;
 
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         //Check if user exist
@@ -62,7 +63,13 @@ public class UserService {
 
         profileClient.createUserProfileForUser(userProfile);
         //Pullish event to kafka
-        kafkaTemplate.send("onboard-successful", "User created with id " + user.getId())
+        NotificationEvent notificationEvent=NotificationEvent.builder()
+                .channel("EMAIL")
+                .recipient(userCreationRequest.getEmail())
+                .subject("wellcome")
+                .body("wellcome"+userCreationRequest.getUsername())
+                .build();
+        kafkaTemplate.send("notificaton-delivery",notificationEvent)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
                         log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
