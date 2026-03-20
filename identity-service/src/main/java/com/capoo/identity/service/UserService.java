@@ -14,12 +14,11 @@ import com.capoo.identity.mapper.UserMapper;
 import com.capoo.identity.repository.RoleRepository;
 import com.capoo.identity.repository.UserRepository;
 import com.capoo.identity.repository.httpClient.profileClient.ProfileClient;
-import jakarta.servlet.Servlet;
-import jakarta.servlet.ServletRequestAttributeEvent;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +41,9 @@ public class UserService {
     UserMapper userMapper;
     ProfileClient profileClient;
     ProfileMapper profileMapper;
+
+    KafkaTemplate<String,String> kafkaTemplate;
+
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         //Check if user exist
         if (userRepository.existsByUsername(userCreationRequest.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
@@ -59,6 +61,15 @@ public class UserService {
         var header= attributes.getRequest().getHeader("Authorization");
 
         profileClient.createUserProfileForUser(userProfile);
+        //Pullish event to kafka
+        kafkaTemplate.send("onboard-successful", "User created with id " + user.getId())
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+                    } else {
+                        log.error("Failed to send message", ex);
+                    }
+                });
         return userMapper.toUserResponse(user);
     }
     @PreAuthorize("hasRole('ADMIN')")
