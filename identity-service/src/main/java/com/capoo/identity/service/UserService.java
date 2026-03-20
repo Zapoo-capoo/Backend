@@ -111,7 +111,7 @@ public class UserService {
     public UserResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
-        User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findById(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         var userResponse = userMapper.toUserResponse(user);
         userResponse.setNoPassword(!StringUtils.hasText(user.getPassword()));
         return userResponse;
@@ -120,7 +120,7 @@ public class UserService {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
 
-        User user = userRepository.findByUsername(name).orElseThrow(
+        User user = userRepository.findById(name).orElseThrow(
                 () -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         if (StringUtils.hasText(user.getPassword()))

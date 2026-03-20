@@ -164,7 +164,7 @@ public class AuthenticationService {
     private String generateToken(User user) {
         JWSHeader header=new JWSHeader(JWSAlgorithm.HS256);
         JWTClaimsSet jwtClaimsSet=new JWTClaimsSet.Builder()
-                .subject(user.getUsername())
+                .subject(user.getId())
                 .issuer("capoo.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(
