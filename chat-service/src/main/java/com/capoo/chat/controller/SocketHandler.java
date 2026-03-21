@@ -2,7 +2,9 @@ package com.capoo.chat.controller;
 
 import com.capoo.chat.dto.request.IntrospectRequest;
 import com.capoo.chat.dto.response.IntrospectResponse;
+import com.capoo.chat.entity.WebSocketSession;
 import com.capoo.chat.service.IdentityService;
+import com.capoo.chat.service.WebSocketSessionService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnConnect;
@@ -15,6 +17,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Component;
 public class SocketHandler {
     SocketIOServer server;
     IdentityService identityService;
+    WebSocketSessionService webSocketSessionService;
     @OnConnect
     public void clientConnected(SocketIOClient client) {
 
@@ -30,26 +35,35 @@ public class SocketHandler {
 
         //Verify token and get user info
         IntrospectResponse introspectResponse=
-                identityService.intrspectToken(
+                identityService.introspectToken(
                         IntrospectRequest.builder()
                                 .token(token)
                                 .build()
                 );
+
         //If token is valid, add user info to client session
         if (!introspectResponse.isValid()){
             log.error("introspectResponse is invalid");
             client.disconnect();
-            return;
+
         }
         else{
             log.info("introspectResponse is valid");
+            //Persist webSocetSession
+            WebSocketSession webSocketSession=WebSocketSession.builder()
+                    .socketSessionId(client.getSessionId().toString())
+                    .userId(introspectResponse.getUserId())
+                    .createdAt(Instant.now())
+                    .build();
+            webSocketSession= webSocketSessionService.create(webSocketSession);
+            log.info("WebSocketSession created with userId:{}", webSocketSession.getUserId());
 
         }
-        log.info("Client connected:{}", client.getSessionId());
     }
     @OnDisconnect
     public void clientDisconnected(SocketIOClient client) {
         log.info("Client disconnected:{}", client.getSessionId());
+        webSocketSessionService.deleteSession(client.getSessionId().toString());
 
     }
     @PostConstruct

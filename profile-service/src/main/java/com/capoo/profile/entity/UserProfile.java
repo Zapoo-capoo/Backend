@@ -23,7 +23,7 @@ public class UserProfile {
     String id;
     @Property("userId")
     String userId;
-
+    String email;
     String username;
     String firstName;
     String city;

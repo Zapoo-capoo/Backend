@@ -18,7 +18,7 @@ import java.util.Objects;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class IdentityService {
     IdentityClient identityClient;
-    public IntrospectResponse intrspectToken(IntrospectRequest request){
+    public IntrospectResponse introspectToken(IntrospectRequest request){
         try {
             var result= identityClient.introspectToken(request);
             if (Objects.isNull(result)){

@@ -63,14 +63,18 @@ public class AuthenticationService {
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();
         boolean isValid = true;
-
+        SignedJWT jwt=null;
         try {
-            verifyToken(token,false);
+            jwt=verifyToken(token,false);
         } catch (AppException e) {
             isValid = false;
         }
 
-        return IntrospectResponse.builder().valid(isValid).build();
+        return IntrospectResponse.builder()
+                .valid(isValid)
+                .userId(Objects.nonNull(jwt)
+                        ? jwt.getJWTClaimsSet().getSubject(): null)
+                .build();
     }
     public String authenticate(AuthenticationRequest request) {
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
@@ -93,19 +97,17 @@ public class AuthenticationService {
                         .grantType(GRANT_TYPE)
                 .build());
 
-
-
         log.info("Token response: {}",response);
         Set<Role> roles=new HashSet<>();
         roles.add(Role.builder().name(PredefinedRole.USER_ROLE).build());
         //getuser info
-
         var userInfo=outboundUserClient.getUserInfo("json",response.getAccessToken());
         log.info("User Info: {}", userInfo);
         //Onboard
-        var user=userRepository.findByUsername(userInfo.getEmail()).orElseGet(
+        var user=userRepository.findByEmail(userInfo.getEmail()).orElseGet(
                 () -> userRepository.save(User.builder()
                         .username(userInfo.getEmail())
+                        .email(userInfo.getEmail())
                         .roles(roles)
                         .build()));
         //create profile for user
@@ -116,11 +118,9 @@ public class AuthenticationService {
         //Generate token for user
         var token=generateToken(user);
         profileClient.createUserProfileForUser(userProfile);
-
-
-        return  AuthenticationResponse.builder()
-                .token(token)
-                .build();
+        AuthenticationResponse authenticationResponse=new AuthenticationResponse();
+        authenticationResponse.setToken(token);
+        return  authenticationResponse;
 
     }
     public void logout(LogoutRequest request) throws ParseException, JOSEException {

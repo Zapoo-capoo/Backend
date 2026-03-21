@@ -42,12 +42,11 @@ public class UserService {
     UserMapper userMapper;
     ProfileClient profileClient;
     ProfileMapper profileMapper;
-
     KafkaTemplate<String,Object> kafkaTemplate;
-
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         //Check if user exist
         if (userRepository.existsByUsername(userCreationRequest.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
+        if (userRepository.existsByEmail(userCreationRequest.getEmail())) throw new AppException(ErrorCode.EMAIL_EXISTED);
         User user = userMapper.toUser(userCreationRequest);
         //Create user
         user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
@@ -60,7 +59,6 @@ public class UserService {
         userProfile.setUserId(user.getId());
         ServletRequestAttributes attributes = (ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
         var header= attributes.getRequest().getHeader("Authorization");
-
         profileClient.createUserProfileForUser(userProfile);
         //Pullish event to kafka
         NotificationEvent notificationEvent=NotificationEvent.builder()
@@ -125,8 +123,10 @@ public class UserService {
 
         if (StringUtils.hasText(user.getPassword()))
             throw new AppException(ErrorCode.PASSWORD_EXISTED);
+        if (userRepository.existsByUsername(request.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setUsername(request.getUsername());
         userRepository.save(user);
     }
 }

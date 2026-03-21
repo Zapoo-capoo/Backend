@@ -24,8 +24,9 @@ public class AuthenticationController {
     @PostMapping("outbound/authentication")
     ApiResponse<AuthenticationResponse> outboundAuthentication(
             @RequestParam("code") String code) {
+        AuthenticationResponse authenticationResponse = authenticationService.oundboundAuthenticate(code);
         return ApiResponse.<AuthenticationResponse>builder()
-                .result(authenticationService.oundboundAuthenticate(code))
+                .result(authenticationResponse)
                 .build();
     }
     @PostMapping("/token")
