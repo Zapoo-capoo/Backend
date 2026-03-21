@@ -12,6 +12,7 @@ import com.capoo.chat.mapper.ChatMessageMapper;
 import com.capoo.chat.repository.ChatMessageRepository;
 import com.capoo.chat.repository.ConversationRepository;
 import com.capoo.chat.repository.httpclient.ProfileClient;
+import com.corundumstudio.socketio.SocketIOServer;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -31,6 +32,7 @@ import java.util.Objects;
 public class ChatMessageService {
     ChatMessageRepository chatMessageRepository;
     ProfileClient profileClient;
+    SocketIOServer socketIOServer;
 
     ChatMessageMapper chatMessageMapper;
     ConversationRepository conversationRepository;
@@ -80,7 +82,10 @@ public class ChatMessageService {
         chatMessage.setCreatedDate(Instant.now());
         //CreateChatMessage
         chatMessageRepository.save(chatMessage);
-
+        //Push message to SocketIO
+        socketIOServer.getAllClients().forEach(client -> {
+            client.sendEvent("message", chatMessage);
+        });
 
         return toChatMessageResponse(chatMessage);
     }
