@@ -54,6 +54,12 @@ public class ConversationService {
 
         var sortedId=userIds.stream().sorted().toList();
         String userIdsHash=generateParticipantHash(sortedId);
+
+        var conversationOptional=conversationRepository.findByParticipantsHash(userIdsHash);
+        if(conversationOptional.isPresent()){
+            return toConversationResponse(conversationOptional.get());
+        }
+
         List<ParticipantInfo>  participantInfoList= List.of(
           ParticipantInfo.builder()
                   .userId(userInfo.getUserId())
