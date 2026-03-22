@@ -9,9 +9,7 @@ Mục lục
 - Chạy project (nhanh)
 - Chạy từng service (chi tiết)
 - Cấu hình quan trọng
-- Lưu ý về API và các tính năng (hiện tại & TODO)
-- Hệ thống file & upload
-- Góp ý phát triển
+
 
 Tổng quan
 --------
