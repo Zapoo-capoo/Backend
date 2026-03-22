@@ -1,6 +1,7 @@
 package com.capoo.chat.service;
 
 import com.capoo.chat.dto.request.ConversationRequest;
+import com.capoo.chat.dto.request.UpdateParticipantRequest;
 import com.capoo.chat.dto.response.ConversationResponse;
 import com.capoo.chat.entity.Conversation;
 import com.capoo.chat.entity.ParticipantInfo;
@@ -87,6 +88,30 @@ public class ConversationService {
         conversation = conversationRepository.save(conversation);
 
         return toConversationResponse(conversation);
+    }
+
+    public void updateParticipant(UpdateParticipantRequest request) {
+        if (request == null || request.getUserId() == null) return;
+
+        List<Conversation> conversations = conversationRepository.findAllByParticipantIdsContains(request.getUserId());
+        for (Conversation conv : conversations) {
+            boolean changed = false;
+            List<ParticipantInfo> parts = conv.getParticipants();
+            if (parts == null) continue;
+            for (ParticipantInfo p : parts) {
+                if (request.getUserId().equals(p.getUserId())) {
+                    if (request.getUsername() != null) p.setUsername(request.getUsername());
+                    if (request.getFirstName() != null) p.setFirstName(request.getFirstName());
+                    if (request.getLastName() != null) p.setLastName(request.getLastName());
+                    if (request.getAvatar() != null) p.setAvatar(request.getAvatar());
+                    changed = true;
+                }
+            }
+            if (changed) {
+                conv.setModifiedDate(Instant.now());
+                conversationRepository.save(conv);
+            }
+        }
     }
 
     private String generateParticipantHash(List<String> ids) {

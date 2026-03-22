@@ -1,8 +1,8 @@
 package com.capoo.chat.controller;
 
 import com.capoo.chat.dto.ApiResponse;
-
 import com.capoo.chat.dto.request.ConversationRequest;
+import com.capoo.chat.dto.request.UpdateParticipantRequest;
 import com.capoo.chat.dto.response.ConversationResponse;
 import com.capoo.chat.service.ConversationService;
 import jakarta.validation.Valid;
@@ -32,5 +32,11 @@ public class ConversationController {
         return ApiResponse.<List<ConversationResponse>>builder()
                 .result(conversationService.myConversations())
                 .build();
+    }
+
+    @PostMapping("/participants/update")
+    ApiResponse<Boolean> updateParticipant(@RequestBody UpdateParticipantRequest request) {
+        conversationService.updateParticipant(request);
+        return ApiResponse.<Boolean>builder().result(true).build();
     }
 }

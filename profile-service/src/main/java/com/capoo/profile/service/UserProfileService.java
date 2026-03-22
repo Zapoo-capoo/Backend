@@ -4,12 +4,14 @@ package com.capoo.profile.service;
 import com.capoo.profile.dto.request.SearchUserRequest;
 import com.capoo.profile.dto.request.UpdateProfileRequest;
 import com.capoo.profile.dto.request.UserProfileCreationRequest;
+import com.capoo.profile.dto.request.UpdateParticipantRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.entity.UserProfile;
 import com.capoo.profile.exception.AppException;
 import com.capoo.profile.exception.ErrorCode;
 import com.capoo.profile.mapper.UserProfileMapper;
 import com.capoo.profile.repository.UserProfileRepository;
+import com.capoo.profile.repository.httpClient.ChatClient;
 import com.capoo.profile.repository.httpClient.FileClient;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class UserProfileService {
     final UserProfileMapper userProfileMapper;
     final UserProfileRepository userProfileRepository;
     final FileClient fileClient;
+    final ChatClient chatClient;
     public UserProfileReponse createUserProfile(UserProfileCreationRequest request ) {
         UserProfile userProfile = userProfileMapper.toUserProfile(request);
         userProfile = userProfileRepository.save(userProfile);
@@ -75,7 +78,23 @@ public class UserProfileService {
 
         userProfileMapper.update(profile, request);
 
-        return userProfileMapper.toUserProfileResponse(userProfileRepository.save(profile));
+        UserProfile updated = userProfileRepository.save(profile);
+
+        // notify chat service to update participant info
+        UpdateParticipantRequest updateParticipantRequest = UpdateParticipantRequest.builder()
+                .userId(updated.getUserId())
+                .username(updated.getUsername())
+                .firstName(updated.getFirstName())
+                .lastName(updated.getLastName())
+                .avatar(updated.getAvatar())
+                .build();
+        try {
+            chatClient.updateParticipant(updateParticipantRequest);
+        } catch (Exception ex) {
+            log.warn("Failed to notify chat service about profile update: {}", ex.getMessage());
+        }
+
+        return userProfileMapper.toUserProfileResponse(updated);
     }
 
     public UserProfileReponse updateAvatar(MultipartFile file) {
@@ -89,14 +108,43 @@ public class UserProfileService {
 
         profile.setAvatar(response.getResult().getUrl());
 
-        return userProfileMapper.toUserProfileResponse(userProfileRepository.save(profile));
+        UserProfile updated = userProfileRepository.save(profile);
+
+        // notify chat service to update participant avatar
+        UpdateParticipantRequest updateParticipantRequest = UpdateParticipantRequest.builder()
+                .userId(updated.getUserId())
+                .username(updated.getUsername())
+                .firstName(updated.getFirstName())
+                .lastName(updated.getLastName())
+                .avatar(updated.getAvatar())
+                .build();
+        try {
+            chatClient.updateParticipant(updateParticipantRequest);
+        } catch (Exception ex) {
+            log.warn("Failed to notify chat service about avatar update: {}", ex.getMessage());
+        }
+
+        return userProfileMapper.toUserProfileResponse(updated);
     }
 
     public List<UserProfileReponse> search(SearchUserRequest request) {
-        var userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<UserProfile> userProfiles = userProfileRepository.findAllByUsernameLike(request.getKeyword());
-        return userProfiles.stream()
-                .filter(userProfile -> !userId.equals(userProfile.getUserId()))
+        // Get current authenticated user's id
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+
+        // Find the profile node for the current user to obtain the internal profile id
+        UserProfile myProfile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Retrieve friends of the current profile (returns list of UserProfile nodes)
+        List<UserProfile> friends = userProfileRepository.getFriend(myProfile.getId());
+
+        // If keyword is null, treat it as empty string to return all friends
+        String keyword = request.getKeyword() == null ? "" : request.getKeyword();
+
+        // Filter friends by username like the original search behavior and map to response
+        return friends.stream()
+                .filter(fp -> fp.getUsername() != null && fp.getUsername().contains(keyword))
                 .map(userProfileMapper::toUserProfileResponse)
                 .toList();
     }
