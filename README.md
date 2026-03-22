@@ -1,2 +1,2 @@
-# bookteria
-The bookteria project, a book social network
+# Zapoo
+The Chat project with social network
