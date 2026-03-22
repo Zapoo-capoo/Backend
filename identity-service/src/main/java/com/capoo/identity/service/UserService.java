@@ -5,6 +5,7 @@ import com.capoo.identity.dto.request.PasswordCreationRequest;
 import com.capoo.identity.dto.request.UserCreationRequest;
 import com.capoo.identity.dto.request.UserProfileCreationRequest;
 import com.capoo.identity.dto.request.UserUpdateRequest;
+import com.capoo.identity.dto.request.UpdateProfileRequest;
 import com.capoo.identity.dto.response.UserResponse;
 import com.capoo.identity.entity.Role;
 import com.capoo.identity.entity.User;
@@ -128,5 +129,15 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setUsername(request.getUsername());
         userRepository.save(user);
+
+        // notify profile service to update username on profile
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder()
+                .username(request.getUsername())
+                .build();
+        try {
+            profileClient.updateMyProfile(updateProfileRequest);
+        } catch (Exception ex) {
+            log.warn("Failed to notify profile service about username update: {}", ex.getMessage());
+        }
     }
 }

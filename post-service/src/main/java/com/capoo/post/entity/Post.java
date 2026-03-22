@@ -20,6 +20,7 @@ public class Post {
     String id;
     String userId;
     String content;
+    String mediaUrl;
     Instant createdDate;
     Instant modifiedDate;
 }

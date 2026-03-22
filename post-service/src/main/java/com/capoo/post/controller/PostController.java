@@ -9,7 +9,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,6 +27,17 @@ public class PostController {
                 .result(postService.createPost(request))
                 .build();
     }
+
+    @PostMapping(value = "/create-with-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ApiResponse<PostResponse> createPostWithMedia(
+            @RequestPart(value = "content", required = false) String content,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) {
+        return ApiResponse.<PostResponse>builder()
+                .result(postService.createPostWithMedia(content, file))
+                .build();
+    }
+
     @GetMapping("/my-posts")
     ApiResponse<PageResponse<PostResponse>> getMyPosts(
             @RequestParam(value="page",required = false,defaultValue = "1") int page,
@@ -32,6 +45,16 @@ public class PostController {
     ) {
         return ApiResponse.<PageResponse<PostResponse>>builder()
                 .result(postService.getMyPosts(page, size))
+                .build();
+    }
+
+    @GetMapping("/friends-posts")
+    ApiResponse<PageResponse<PostResponse>> getFriendsPosts(
+            @RequestParam(value="page",required = false,defaultValue = "1") int page,
+            @RequestParam(value="size",required = false,defaultValue = "10") int size
+    ) {
+        return ApiResponse.<PageResponse<PostResponse>>builder()
+                .result(postService.getFriendsPosts(page, size))
                 .build();
     }
 }

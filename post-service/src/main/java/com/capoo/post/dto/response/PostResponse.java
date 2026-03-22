@@ -19,6 +19,8 @@ public class PostResponse {
     String content;
     String userId;
     String username;
+    String avatar;
+    String mediaUrl;
     String created;
     Instant createdDate;
     Instant modifiedDate;
