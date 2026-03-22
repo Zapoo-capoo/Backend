@@ -88,11 +88,11 @@ public class UserProfileService {
                 .lastName(updated.getLastName())
                 .avatar(updated.getAvatar())
                 .build();
-        try {
-            chatClient.updateParticipant(updateParticipantRequest);
-        } catch (Exception ex) {
-            log.warn("Failed to notify chat service about profile update: {}", ex.getMessage());
-        }
+//        try {
+//            chatClient.updateParticipant(updateParticipantRequest);
+//        } catch (Exception ex) {
+//            log.warn("Failed to notify chat service about profile update: {}", ex.getMessage());
+//        }
 
         return userProfileMapper.toUserProfileResponse(updated);
     }
@@ -118,11 +118,11 @@ public class UserProfileService {
                 .lastName(updated.getLastName())
                 .avatar(updated.getAvatar())
                 .build();
-        try {
-            chatClient.updateParticipant(updateParticipantRequest);
-        } catch (Exception ex) {
-            log.warn("Failed to notify chat service about avatar update: {}", ex.getMessage());
-        }
+//        try {
+//            chatClient.updateParticipant(updateParticipantRequest);
+//        } catch (Exception ex) {
+//            log.warn("Failed to notify chat service about avatar update: {}", ex.getMessage());
+//        }
 
         return userProfileMapper.toUserProfileResponse(updated);
     }
