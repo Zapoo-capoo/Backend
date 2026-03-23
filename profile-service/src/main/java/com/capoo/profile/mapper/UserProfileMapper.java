@@ -1,7 +1,7 @@
 package com.capoo.profile.mapper;
 
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.profile.dto.request.UpdateProfileRequest;
-import com.capoo.profile.dto.request.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.entity.UserProfile;
 import org.mapstruct.Mapper;
@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Profile;
 public interface UserProfileMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "userId", target = "userId")
-
     UserProfile toUserProfile(UserProfileCreationRequest request);
     UserProfileReponse toUserProfileResponse(UserProfile userProfile);
     void update(@MappingTarget UserProfile entity, UpdateProfileRequest request);

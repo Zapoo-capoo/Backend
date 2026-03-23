@@ -1,9 +1,12 @@
 package com.capoo.profile.service;
 
 
+import com.capoo.event.dto.NotificationEvent;
+import com.capoo.event.dto.ProfileCreatedEvent;
+import com.capoo.event.dto.UserCreatedEvent;
 import com.capoo.profile.dto.request.SearchUserRequest;
 import com.capoo.profile.dto.request.UpdateProfileRequest;
-import com.capoo.profile.dto.request.UserProfileCreationRequest;
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.profile.dto.request.UpdateParticipantRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.entity.UserProfile;
@@ -17,6 +20,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,11 +39,50 @@ public class UserProfileService {
     final UserProfileRepository userProfileRepository;
     final FileClient fileClient;
     final ChatClient chatClient;
+    final KafkaTemplate<String,Object> kafkaTemplate;
+
+    @KafkaListener(topics = "user_created_event5")
+    public void createProfile(@Payload UserProfileCreationRequest request) {
+        log.info("Received notification event: {}", request);
+        createUserProfile(request);
+    }
     public UserProfileReponse createUserProfile(UserProfileCreationRequest request ) {
-        UserProfile userProfile = userProfileMapper.toUserProfile(request);
-        userProfile = userProfileRepository.save(userProfile);
-        log.info("UserProfile{}",userProfile.toString());
-        return userProfileMapper.toUserProfileResponse(userProfile);
+        try {
+            UserProfile userProfile = userProfileMapper.toUserProfile(request);
+            userProfile = userProfileRepository.save(userProfile);
+            log.info("UserProfile{}",userProfile.toString());
+            ProfileCreatedEvent event = ProfileCreatedEvent.builder()
+                    .userId(userProfile.getUserId())
+                    .status("SUCCESS")
+                    .email(request.getEmail())
+                    .username(request.getUsername())
+                    .build();
+            kafkaTemplate.send("profile_created_event5", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+                        } else {
+                            log.error("Failed to send message", ex);
+                        }
+                    });
+            return userProfileMapper.toUserProfileResponse(userProfile);
+        } catch (Exception e) {
+            ProfileCreatedEvent event = ProfileCreatedEvent.builder()
+                    .userId(request.getUserId())
+                    .status("FAILED")
+                    .email(request.getEmail())
+                    .username(request.getUsername())
+                    .build();
+            kafkaTemplate.send("profile_created_event5", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+                        } else {
+                            log.error("Failed to send message", ex);
+                        }
+                    });
+            throw new RuntimeException(e);
+        }
     }
     public UserProfileReponse getProfileByUserId(String userId) {
         UserProfile userProfile = userProfileRepository.findByUserId(userId)

@@ -1,7 +1,7 @@
 package com.capoo.identity.repository.httpClient.profileClient;
 
 import com.capoo.identity.configuration.AuthenticationRequestInterceptor;
-import com.capoo.identity.dto.request.UserProfileCreationRequest;
+import com.capoo.event.dto.UserProfileCreationRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

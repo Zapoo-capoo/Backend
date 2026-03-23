@@ -1,9 +1,11 @@
 package com.capoo.identity.service;
 
+import com.capoo.event.dto.ProfileCreatedEvent;
+import com.capoo.event.dto.UserCreatedEvent;
 import com.capoo.identity.constant.PredefinedRole;
 import com.capoo.identity.dto.request.PasswordCreationRequest;
 import com.capoo.identity.dto.request.UserCreationRequest;
-import com.capoo.identity.dto.request.UserProfileCreationRequest;
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.identity.dto.request.UserUpdateRequest;
 import com.capoo.identity.dto.request.UpdateProfileRequest;
 import com.capoo.identity.dto.response.UserResponse;
@@ -20,7 +22,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,31 +48,24 @@ public class UserService {
     ProfileClient profileClient;
     ProfileMapper profileMapper;
     KafkaTemplate<String,Object> kafkaTemplate;
+
+
     public UserResponse createUser(UserCreationRequest userCreationRequest) {
         //Check if user exist
-        if (userRepository.existsByUsername(userCreationRequest.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
-        if (userRepository.existsByEmail(userCreationRequest.getEmail())) throw new AppException(ErrorCode.EMAIL_EXISTED);
+        if (userRepository.existsByUsername(userCreationRequest.getUsername()))
+            throw new AppException(ErrorCode.USER_EXISTED);
+        if (userRepository.existsByEmail(userCreationRequest.getEmail()))
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
         User user = userMapper.toUser(userCreationRequest);
         //Create user
         user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
-        HashSet<Role> roles=new HashSet<>();
+        HashSet<Role> roles = new HashSet<>();
         roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
         user.setRoles(roles);
-        user= userRepository.save(user);
-        //Create profile for user
+        user = userRepository.save(user);
         UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(userCreationRequest);
         userProfile.setUserId(user.getId());
-        ServletRequestAttributes attributes = (ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-        var header= attributes.getRequest().getHeader("Authorization");
-        profileClient.createUserProfileForUser(userProfile);
-        //Pullish event to kafka
-        NotificationEvent notificationEvent=NotificationEvent.builder()
-                .channel("EMAIL")
-                .recipient(userCreationRequest.getEmail())
-                .subject("wellcome")
-                .body("wellcome"+userCreationRequest.getUsername())
-                .build();
-        kafkaTemplate.send("notificaton-delivery",notificationEvent)
+        kafkaTemplate.send("user_created_event5", userProfile)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
                         log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
@@ -78,6 +75,53 @@ public class UserService {
                 });
         return userMapper.toUserResponse(user);
     }
+    @KafkaListener(topics = "profile_created_event5")
+    public void handleProfileCreatedEvent(@Payload ProfileCreatedEvent event) {
+        log.info("Received profile created event: {}", event);
+        if ("SUCCESS".equals(event.getStatus())) {
+            // Pullish event to kafka
+            NotificationEvent notificationEvent=NotificationEvent.builder()
+                    .channel("EMAIL")
+                    .recipient(event.getEmail())
+                    .subject("wellcome")
+                    .body("wellcome"+event.getUsername())
+                    .build();
+            kafkaTemplate.send("onboard_successful456", notificationEvent)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+                        } else {
+                            log.error("Failed to send message", ex);
+                        }
+                    });
+        } else {
+            deleteUser(event.getUserId());
+        }
+    }
+//
+//        //Create profile for user
+//        UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(userCreationRequest);
+//        userProfile.setUserId(user.getId());
+//        ServletRequestAttributes attributes = (ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+//        var header= attributes.getRequest().getHeader("Authorization");
+//        profileClient.createUserProfileForUser(userProfile);
+//        //Pullish event to kafka
+//        NotificationEvent notificationEvent=NotificationEvent.builder()
+//                .channel("EMAIL")
+//                .recipient(userCreationRequest.getEmail())
+//                .subject("wellcome")
+//                .body("wellcome"+userCreationRequest.getUsername())
+//                .build();
+//        kafkaTemplate.send("nonboard-successful",notificationEvent)
+//                .whenComplete((result, ex) -> {
+//                    if (ex == null) {
+//                        log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+//                    } else {
+//                        log.error("Failed to send message", ex);
+//                    }
+//                });
+//        return userMapper.toUserResponse(user);
+//    }
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse updateUser(String userId, UserUpdateRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
@@ -91,7 +135,7 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+ //   @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(String userId) {
         userRepository.deleteById(userId);
     }

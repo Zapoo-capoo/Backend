@@ -27,10 +27,4 @@ public class EmailController {
                 .result(emailService.sendEmail(body))
                 .build();
     }
-    @KafkaListener(topics = "onboard-successful", groupId = "notification-group-test-123")    public void listen(ConsumerRecord<String, String> record) {
-        // Log value plus metadata to make diagnosis easier
-        log.info("Received message: {} (topic={}, partition={}, offset={})",
-                record.value(), record.topic(), record.partition(), record.offset());
-        // You can also call emailService.sendEmail(...) here if the payload matches the request model
-    }
 }

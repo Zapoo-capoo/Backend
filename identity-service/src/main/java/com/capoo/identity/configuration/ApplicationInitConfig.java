@@ -1,7 +1,7 @@
 package com.capoo.identity.configuration;
 
 import com.capoo.identity.constant.PredefinedRole;
-import com.capoo.identity.dto.request.UserProfileCreationRequest;
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.identity.entity.Role;
 import com.capoo.identity.entity.User;
 import com.capoo.identity.mapper.ProfileMapper;

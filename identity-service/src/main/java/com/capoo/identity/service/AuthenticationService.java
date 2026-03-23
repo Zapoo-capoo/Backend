@@ -1,5 +1,6 @@
 package com.capoo.identity.service;
 
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.identity.constant.PredefinedRole;
 import com.capoo.identity.dto.request.*;
 import com.capoo.identity.dto.response.AuthenticationResponse;

@@ -1,7 +1,7 @@
 package com.capoo.profile.controller;
 
 import com.capoo.profile.dto.ApiResponse;
-import com.capoo.profile.dto.request.UserProfileCreationRequest;
+import com.capoo.event.dto.UserProfileCreationRequest;
 import com.capoo.profile.dto.response.UserProfileReponse;
 import com.capoo.profile.service.UserProfileService;
 import lombok.AccessLevel;
