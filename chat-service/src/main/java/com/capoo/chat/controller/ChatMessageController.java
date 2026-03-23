@@ -35,4 +35,10 @@ public class ChatMessageController {
                 .result(chatMessageService.getMessages(conversationId))
                 .build();
     }
+
+    @DeleteMapping("/{id}")
+    ApiResponse<Void> deleteMessage(@PathVariable("id") String id) {
+        chatMessageService.deleteMessage(id);
+        return ApiResponse.<Void>builder().build();
+    }
 }

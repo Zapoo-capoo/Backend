@@ -13,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -56,5 +55,11 @@ public class PostController {
         return ApiResponse.<PageResponse<PostResponse>>builder()
                 .result(postService.getFriendsPosts(page, size))
                 .build();
+    }
+
+    @DeleteMapping("/{id}")
+    ApiResponse<Void> deletePost(@PathVariable("id") String id) {
+        postService.deletePost(id);
+        return ApiResponse.<Void>builder().build();
     }
 }

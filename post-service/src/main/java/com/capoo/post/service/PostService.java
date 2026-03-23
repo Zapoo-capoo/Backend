@@ -23,8 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -125,25 +127,24 @@ public class PostService {
         } catch (Exception ex) {
             log.warn("Failed to fetch friends from profile service: {}", ex.getMessage());
         }
-        if (friends == null || friends.isEmpty()) {
-            return PageResponse.<PostResponse>builder()
-                    .currentPage(page)
-                    .pageSize(0)
-                    .totalPages(0)
-                    .totalElements(0)
-                    .data(List.of())
-                    .build();
-        }
 
-        List<String> friendUserIds = friends.stream().map(UserProfileReponse::getUserId).collect(Collectors.toList());
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getName();
+
+        // Build a set of userIds that includes friends and the current user so we also return the user's own posts
+        Set<String> userIds = new HashSet<>();
+        if (friends != null && !friends.isEmpty()) {
+            userIds.addAll(friends.stream().map(UserProfileReponse::getUserId).toList());
+        }
+        userIds.add(userId); // always include the current user
 
         // build map of userId -> username/avatar to enrich posts without additional calls
-        Map<String, UserProfileReponse> profileMap = friends.stream().collect(Collectors.toMap(UserProfileReponse::getUserId, p -> p));
+        Map<String, UserProfileReponse> profileMap = (friends == null) ? Map.of() : friends.stream().collect(Collectors.toMap(UserProfileReponse::getUserId, p -> p));
 
         Sort sort = Sort.by(Sort.Direction.DESC, "createdDate");
         Pageable pageable = PageRequest.of(page-1, size, sort);
 
-        Page<Post> postPage = postRepository.findAllByUserIdIn(friendUserIds, pageable);
+        Page<Post> postPage = postRepository.findAllByUserIdIn(userIds.stream().toList(), pageable);
 
         var postList = postPage.getContent().stream().map(post -> {
             var postResponse = postMapper.toPostResponse(post);
@@ -152,6 +153,17 @@ public class PostService {
             if (prof != null) {
                 postResponse.setUsername(prof.getUsername());
                 postResponse.setAvatar(prof.getAvatar());
+            } else if (post.getUserId().equals(userId)) {
+                // if the post belongs to current user but profileMap doesn't contain it (profile service missing), fetch username/avatar directly
+                UserProfileReponse me = null;
+                try {
+                    var resp = profileClient.getUserProfileByUserId(userId);
+                    if (resp != null) me = resp.getResult();
+                } catch (Exception ex) {
+                    log.warn("Failed to fetch profile for current user {}: {}", userId, ex.getMessage());
+                }
+                postResponse.setUsername(me != null && me.getUsername() != null ? me.getUsername() : "Unknown");
+                postResponse.setAvatar(me != null ? me.getAvatar() : null);
             } else {
                 postResponse.setUsername("Unknown");
             }
@@ -166,6 +178,20 @@ public class PostService {
                 .totalElements(postPage.getTotalElements())
                 .data(postList)
                 .build();
+    }
+
+    public void deletePost(String postId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getName();
+        var postOpt = postRepository.findById(postId);
+        if (postOpt.isEmpty()) {
+            throw new RuntimeException("Post not found");
+        }
+        Post post = postOpt.get();
+        if (!post.getUserId().equals(userId)) {
+            throw new RuntimeException("You are not allowed to delete this post");
+        }
+        postRepository.delete(post);
     }
 
 }

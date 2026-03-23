@@ -59,7 +59,7 @@ public class ChatMessageService {
                 .toList();
     }
 
-    public ChatMessageResponse create(ChatMessageRequest request) throws JsonProcessingException {
+    public ChatMessageResponse create(ChatMessageRequest request) {
         //validate conversationId
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(request.getConversationId()).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
@@ -86,7 +86,7 @@ public class ChatMessageService {
         );
         chatMessage.setCreatedDate(Instant.now());
         //CreateChatMessage
-        var chat=chatMessageRepository.save(chatMessage);
+        chatMessageRepository.save(chatMessage);
         //Push message to SocketIO
         //get Participants of conversation
         List<String> participantIds=conversation.getParticipants().stream()
@@ -96,13 +96,17 @@ public class ChatMessageService {
                 .findAllByUserIdIn(participantIds)
                         .stream()
                         .collect(Collectors.toMap(WebSocketSession::getSocketSessionId, Function.identity()));
+
+
         ChatMessageResponse chatMessageResponse=chatMessageMapper.toChatMessageResponse(chatMessage);
+
+
         socketIOServer.getAllClients().forEach(client -> {
             var webSocketSession=sessions.get(client.getSessionId().toString());
             if (Objects.isNull(webSocketSession)) {
                 return;
             }
-            String message= null;
+            String message;
             try {
                 chatMessageResponse.setMe(webSocketSession.getUserId().equals(userInfo.getUserId()));
                 message = objectMapper.writeValueAsString(chatMessageResponse);
@@ -111,9 +115,57 @@ public class ChatMessageService {
             }
             client.sendEvent("message", message);
         });
-
         return toChatMessageResponse(chatMessage);
     }
+
+    public void deleteMessage(String messageId) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        ChatMessage chatMessage = chatMessageRepository.findById(messageId).orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+        // Only allow sender to delete the message
+        if (Objects.isNull(chatMessage.getSender()) || !userId.equals(chatMessage.getSender().getUserId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACTION);
+        }
+        // Find conversation to get participants for notification
+        Conversation conversation = conversationRepository.findById(chatMessage.getConversationId()).orElse(null);
+        List<String> participantIds = Collections.emptyList();
+        if (conversation != null) {
+            participantIds = conversation.getParticipants().stream().map(ParticipantInfo::getUserId).toList();
+        }
+
+        // Delete the message
+        chatMessageRepository.delete(chatMessage);
+
+        // Notify participants about deletion via socket
+        if (!participantIds.isEmpty()) {
+            Map<String,WebSocketSession> sessions = webSocketSessionRepository
+                    .findAllByUserIdIn(participantIds)
+                    .stream()
+                    .collect(Collectors.toMap(WebSocketSession::getSocketSessionId, Function.identity()));
+
+            // Build simple deletion payload
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "delete");
+            payload.put("messageId", messageId);
+            payload.put("conversationId", chatMessage.getConversationId());
+
+            String message;
+            try {
+                message = objectMapper.writeValueAsString(payload);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
+            final String finalMessage = message;
+            socketIOServer.getAllClients().forEach(client -> {
+                var webSocketSession = sessions.get(client.getSessionId().toString());
+                if (Objects.isNull(webSocketSession)) {
+                    return;
+                }
+                client.sendEvent("message:delete", finalMessage);
+            });
+        }
+    }
+
     private ChatMessageResponse toChatMessageResponse(ChatMessage chatMessage) {
         ChatMessageResponse chatMessageResponse=chatMessageMapper.toChatMessageResponse(chatMessage);
         String userId=SecurityContextHolder.getContext().getAuthentication().getName();
