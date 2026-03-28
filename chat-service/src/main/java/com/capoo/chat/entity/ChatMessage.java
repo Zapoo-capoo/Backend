@@ -24,6 +24,9 @@ public class ChatMessage {
     String conversationId;
 
     String message;
+    String imgUrl;
+
+    String avatar;
 
     ParticipantInfo sender;
 

@@ -2,6 +2,7 @@ package com.capoo.chat.service;
 
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
+import com.capoo.chat.dto.response.FileReponse;
 import com.capoo.chat.dto.response.UserProfileResponse;
 import com.capoo.chat.entity.ChatMessage;
 import com.capoo.chat.entity.Conversation;
@@ -13,6 +14,7 @@ import com.capoo.chat.mapper.ChatMessageMapper;
 import com.capoo.chat.repository.ChatMessageRepository;
 import com.capoo.chat.repository.ConversationRepository;
 import com.capoo.chat.repository.WebSocketSessionRepository;
+import com.capoo.chat.repository.httpclient.FileClient;
 import com.capoo.chat.repository.httpclient.ProfileClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,6 +25,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.*;
@@ -41,6 +44,7 @@ public class ChatMessageService {
     ObjectMapper objectMapper;
     ChatMessageMapper chatMessageMapper;
     ConversationRepository conversationRepository;
+    FileClient fileClient;
     public List<ChatMessageResponse> getMessages(String conversationId) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(conversationId).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
@@ -59,7 +63,7 @@ public class ChatMessageService {
                 .toList();
     }
 
-    public ChatMessageResponse create(ChatMessageRequest request) {
+    public ChatMessageResponse create(ChatMessageRequest request, MultipartFile file) {
         //validate conversationId
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(request.getConversationId()).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
@@ -85,6 +89,11 @@ public class ChatMessageService {
                         .build()
         );
         chatMessage.setCreatedDate(Instant.now());
+        FileReponse response=null;
+        if (file != null && !file.isEmpty()) {
+            response = fileClient.uploadMedia(file).getResult();
+            chatMessage.setImgUrl(response.getUrl());
+        }
         //CreateChatMessage
         chatMessageRepository.save(chatMessage);
         //Push message to SocketIO
@@ -117,7 +126,6 @@ public class ChatMessageService {
         });
         return toChatMessageResponse(chatMessage);
     }
-
     public void deleteMessage(String messageId) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         ChatMessage chatMessage = chatMessageRepository.findById(messageId).orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));

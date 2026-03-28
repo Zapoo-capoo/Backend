@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -22,9 +23,10 @@ public class ChatMessageController {
 
     @PostMapping("/create")
     ApiResponse<ChatMessageResponse> create(
-            @RequestBody @Valid ChatMessageRequest request) throws JsonProcessingException {
+            @ModelAttribute ChatMessageRequest request,
+            @RequestParam(value="file",required = false)MultipartFile file) throws JsonProcessingException {
         return ApiResponse.<ChatMessageResponse>builder()
-                .result(chatMessageService.create(request))
+                .result(chatMessageService.create(request, file))
                 .build();
     }
 

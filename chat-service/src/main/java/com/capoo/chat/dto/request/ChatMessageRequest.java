@@ -12,6 +12,5 @@ import lombok.experimental.FieldDefaults;
 public class ChatMessageRequest {
     @NotBlank
     String conversationId;
-    @NotBlank
     String message;
 }

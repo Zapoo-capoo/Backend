@@ -16,6 +16,7 @@ public class ChatMessageResponse {
     String conversationId;
     boolean me;
     String message;
+    String imgUrl;
     ParticipantInfo sender;
     Instant createdDate;
 }

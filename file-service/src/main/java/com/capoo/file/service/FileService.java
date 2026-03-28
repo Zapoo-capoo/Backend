@@ -65,4 +65,26 @@ public class FileService {
         }
         return new FileData(fileMgmt.getContentType(), resource);
     }
+    public void deleteFile(String fileId) {
+        // 1. Tìm file trong DB
+        FileMgmt fileMgmt = fileMgmtRepository.findById(fileId)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        // 2. Check quyền (chỉ owner được xóa)
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (!Objects.equals(fileMgmt.getOwnerId(), userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+
+        // 3. Xóa file vật lý
+        try {
+            fileRepository.delete(fileMgmt);
+        } catch (IOException e) {
+            throw new RuntimeException("Delete file failed", e);
+        }
+
+        // 4. Xóa metadata trong DB
+        fileMgmtRepository.delete(fileMgmt);
+    }
 }
