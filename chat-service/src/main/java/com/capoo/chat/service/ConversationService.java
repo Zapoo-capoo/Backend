@@ -37,6 +37,7 @@ public class ConversationService {
         return conversations.stream().map(this::toConversationResponse).toList();
     }
 
+
     public ConversationResponse create(ConversationRequest request) {
         //Fetch user info
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();

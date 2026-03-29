@@ -1,6 +1,7 @@
 package com.capoo.chat.controller;
 
 import com.capoo.chat.dto.ApiResponse;
+import com.capoo.chat.dto.PageResponse;
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
 import com.capoo.chat.service.ChatMessageService;
@@ -31,10 +32,12 @@ public class ChatMessageController {
     }
 
     @GetMapping
-    ApiResponse<List<ChatMessageResponse>> getMessages(
+    ApiResponse<PageResponse<ChatMessageResponse>> getMessages(
+            @RequestParam(value="page",required = false,defaultValue = "1") int page,
+            @RequestParam(value="size",required = false,defaultValue = "10") int size,
             @RequestParam("conversationId") String conversationId) {
-        return ApiResponse.<List<ChatMessageResponse>>builder()
-                .result(chatMessageService.getMessages(conversationId))
+        return ApiResponse.<PageResponse<ChatMessageResponse>>builder()
+                .result(chatMessageService.getMessages(conversationId, page, size))
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package com.capoo.chat.service;
 
+import com.capoo.chat.dto.PageResponse;
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
 import com.capoo.chat.dto.response.FileReponse;
@@ -23,6 +24,11 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,7 +51,8 @@ public class ChatMessageService {
     ChatMessageMapper chatMessageMapper;
     ConversationRepository conversationRepository;
     FileClient fileClient;
-    public List<ChatMessageResponse> getMessages(String conversationId) {
+    public PageResponse<ChatMessageResponse> getMessages(String conversationId, int page, int size) {
+
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(conversationId).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
         //Check if user is participant of conversation
@@ -57,10 +64,19 @@ public class ChatMessageService {
         if (Objects.isNull(userProfileResponse)) {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
-        var messages=chatMessageRepository.findAllByConversationIdOrderByCreatedDateDesc(conversationId);
-        return messages.stream()
-                .map(this::toChatMessageResponse)
-                .toList();
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdDate");
+        Pageable pageable = PageRequest.of(page-1,size,sort);
+        Page<ChatMessage> messagePage=chatMessageRepository.findAllByConversationId(conversationId,pageable);
+        List<ChatMessageResponse> messageList=messagePage.getContent()
+                .stream().map(this::toChatMessageResponse).toList();
+        return  PageResponse.<ChatMessageResponse>builder()
+                .currentPage(page)
+                .pageSize(messagePage.getSize())
+                .totalPages(messagePage.getTotalPages())
+                .totalElements(messagePage.getTotalElements())
+                .data(messageList)
+                .build();
+
     }
 
     public ChatMessageResponse create(ChatMessageRequest request, MultipartFile file) {
@@ -96,11 +112,14 @@ public class ChatMessageService {
         }
         //CreateChatMessage
         chatMessageRepository.save(chatMessage);
+
+
         //Push message to SocketIO
         //get Participants of conversation
         List<String> participantIds=conversation.getParticipants().stream()
                 .map(ParticipantInfo::getUserId)
                 .toList();
+        //send message to participants via socket
         Map<String,WebSocketSession> sessions=webSocketSessionRepository
                 .findAllByUserIdIn(participantIds)
                         .stream()
