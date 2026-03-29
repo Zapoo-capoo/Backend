@@ -34,6 +34,7 @@ public class ConversationService {
     public List<ConversationResponse> myConversations() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         List<Conversation> conversations = conversationRepository.findAllByParticipantIdsContains(userId);
+
         return conversations.stream().map(this::toConversationResponse).toList();
     }
 

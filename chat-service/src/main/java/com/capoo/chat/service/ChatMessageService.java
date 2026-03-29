@@ -51,8 +51,32 @@ public class ChatMessageService {
     ChatMessageMapper chatMessageMapper;
     ConversationRepository conversationRepository;
     FileClient fileClient;
+    RedisTemplate redisTemplate;
     public PageResponse<ChatMessageResponse> getMessages(String conversationId, int page, int size) {
-
+        String key="chat:messages:"+conversationId;
+        //Neu page dau thi check cache truoc
+        if(page==1 && size<=20){
+            List<String> cached = redisTemplate.opsForList().range(key, 0, size - 1);
+            //Neu co cache thi tra ve, neu khong thi lay tu db va cache lai
+            if (Objects.nonNull(cached) && !cached.isEmpty()) {
+                List<ChatMessageResponse> cachedMessages = cached.stream().map(json -> {
+                    try {
+                        return objectMapper.readValue(json, ChatMessageResponse.class);
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to parse cached message JSON", e);
+                        return null;
+                    }
+                }).filter(Objects::nonNull).toList();
+                return PageResponse.<ChatMessageResponse>builder()
+                        .currentPage(page)
+                        .pageSize(cachedMessages.size())
+                        .totalPages(1)
+                        .totalElements(0)
+                        .data(cachedMessages)
+                        .build();
+            }
+        }
+        //Cache Miss or page > 1, lay tu db
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(conversationId).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
         //Check if user is participant of conversation
@@ -69,6 +93,26 @@ public class ChatMessageService {
         Page<ChatMessage> messagePage=chatMessageRepository.findAllByConversationId(conversationId,pageable);
         List<ChatMessageResponse> messageList=messagePage.getContent()
                 .stream().map(this::toChatMessageResponse).toList();
+        //Neu la page dau thi cache ket qua vao redis
+        if(page==1){
+            try{
+                List<String> jsonList=messageList
+                        .stream().limit(20)
+                        .map(msg-> {
+                            try {
+                                return objectMapper.writeValueAsString(msg);
+                            } catch (JsonProcessingException e) {
+                                log.error("Failed to serialize message to JSON for caching", e);
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull).toList();
+                redisTemplate.delete(key);
+                redisTemplate.opsForList().rightPushAll(key, jsonList);
+            } catch (Exception e){
+                log.error("Failed to cache messages in Redis", e);
+            }
+        }
         return  PageResponse.<ChatMessageResponse>builder()
                 .currentPage(page)
                 .pageSize(messagePage.getSize())
@@ -81,6 +125,9 @@ public class ChatMessageService {
 
     public ChatMessageResponse create(ChatMessageRequest request, MultipartFile file) {
         //validate conversationId
+        String key="chat:messages:"+request.getConversationId();
+
+
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation=conversationRepository.findById(request.getConversationId()).orElseThrow(()->new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
         //Check if user is participant of conversation
@@ -114,6 +161,7 @@ public class ChatMessageService {
         chatMessageRepository.save(chatMessage);
 
 
+
         //Push message to SocketIO
         //get Participants of conversation
         List<String> participantIds=conversation.getParticipants().stream()
@@ -127,6 +175,18 @@ public class ChatMessageService {
 
 
         ChatMessageResponse chatMessageResponse=chatMessageMapper.toChatMessageResponse(chatMessage);
+
+        List<String> cached = redisTemplate.opsForList().range(key, 0, -1);
+        String json;
+        try {
+            chatMessageResponse.setMe(true);
+            json = objectMapper.writeValueAsString(chatMessageResponse);
+            redisTemplate.opsForList().leftPush(key, json);
+            redisTemplate.opsForList().trim(key, 0, 19);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize message to JSON for caching", e);
+        }
+
 
 
         socketIOServer.getAllClients().forEach(client -> {
@@ -146,6 +206,7 @@ public class ChatMessageService {
         return toChatMessageResponse(chatMessage);
     }
     public void deleteMessage(String messageId) {
+
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         ChatMessage chatMessage = chatMessageRepository.findById(messageId).orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
         // Only allow sender to delete the message
@@ -161,6 +222,10 @@ public class ChatMessageService {
 
         // Delete the message
         chatMessageRepository.delete(chatMessage);
+        String key="chat:messages:"+chatMessage.getConversationId();
+        // Remove from cache if exists
+        redisTemplate.delete(key);
+
 
         // Notify participants about deletion via socket
         if (!participantIds.isEmpty()) {
