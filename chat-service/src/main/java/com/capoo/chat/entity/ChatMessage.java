@@ -27,9 +27,7 @@ public class ChatMessage {
     String imgUrl;
 
     String avatar;
-
     ParticipantInfo sender;
-
     @Indexed
     Instant createdDate;
 }

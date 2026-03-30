@@ -159,21 +159,6 @@ public class ChatMessageService {
         }
         //CreateChatMessage
         chatMessageRepository.save(chatMessage);
-
-
-
-        //Push message to SocketIO
-        //get Participants of conversation
-        List<String> participantIds=conversation.getParticipants().stream()
-                .map(ParticipantInfo::getUserId)
-                .toList();
-        //send message to participants via socket
-        Map<String,WebSocketSession> sessions=webSocketSessionRepository
-                .findAllByUserIdIn(participantIds)
-                        .stream()
-                        .collect(Collectors.toMap(WebSocketSession::getSocketSessionId, Function.identity()));
-
-
         ChatMessageResponse chatMessageResponse=chatMessageMapper.toChatMessageResponse(chatMessage);
 
         List<String> cached = redisTemplate.opsForList().range(key, 0, -1);
@@ -187,22 +172,33 @@ public class ChatMessageService {
             log.error("Failed to serialize message to JSON for caching", e);
         }
 
+        //Push message to SocketIO
+        //get Participants of conversation
+        List<String> participantIds=conversation.getParticipants().stream()
+                .map(ParticipantInfo::getUserId)
+                .toList();
+        //send message to participants via socket
+        Map<String,WebSocketSession> sessions=webSocketSessionRepository
+                .findAllByUserIdIn(participantIds)
+                .stream()
+                .collect(Collectors.toMap(WebSocketSession::getSocketSessionId, Function.identity()));
+        String message;
 
-
-        socketIOServer.getAllClients().forEach(client -> {
-            var webSocketSession=sessions.get(client.getSessionId().toString());
-            if (Objects.isNull(webSocketSession)) {
-                return;
-            }
-            String message;
-            try {
-                chatMessageResponse.setMe(webSocketSession.getUserId().equals(userInfo.getUserId()));
-                message = objectMapper.writeValueAsString(chatMessageResponse);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-            client.sendEvent("message", message);
-        });
+        try {
+            message= objectMapper.writeValueAsString(chatMessageResponse);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        for (String id: participantIds) {
+            socketIOServer.getRoomOperations("user-"+id).sendEvent("message", message);
+        }
+//        socketIOServer.getAllClients().forEach(client -> {
+//            var webSocketSession=sessions.get(client.getSessionId().toString());
+//            if (Objects.isNull(webSocketSession)) {
+//                return;
+//            }
+//            client.sendEvent("message", message);
+//        });
         return toChatMessageResponse(chatMessage);
     }
     public void deleteMessage(String messageId) {

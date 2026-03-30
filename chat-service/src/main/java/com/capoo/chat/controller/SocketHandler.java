@@ -23,7 +23,7 @@ import java.time.Instant;
 @Component
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class SocketHandler {
+public class  SocketHandler {
     SocketIOServer server;
     IdentityService identityService;
     WebSocketSessionService webSocketSessionService;
@@ -56,8 +56,8 @@ public class SocketHandler {
                     .createdAt(Instant.now())
                     .build();
             webSocketSession= webSocketSessionService.create(webSocketSession);
+            client.joinRoom("user-"+introspectResponse.getUserId());
             log.info("WebSocketSession created with userId:{}", webSocketSession.getUserId());
-
         }
     }
     @OnDisconnect
