@@ -1,12 +1,12 @@
-package com.capoo.profile.service;
+package com.capoo.notification.service;
 
-import com.capoo.profile.dto.reponse.EmailReponse;
-import com.capoo.profile.dto.request.EmailRequest;
-import com.capoo.profile.dto.request.EmailUserRequest;
-import com.capoo.profile.dto.request.Sender;
-import com.capoo.profile.exception.AppException;
-import com.capoo.profile.exception.ErrorCode;
-import com.capoo.profile.repository.httpClient.EmailClient;
+import com.capoo.notification.dto.reponse.EmailReponse;
+import com.capoo.notification.dto.request.EmailRequest;
+import com.capoo.notification.dto.request.EmailUserRequest;
+import com.capoo.notification.dto.request.Sender;
+import com.capoo.notification.exception.AppException;
+import com.capoo.notification.exception.ErrorCode;
+import com.capoo.notification.repository.httpClient.EmailClient;
 import feign.FeignException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

@@ -1,7 +1,7 @@
-package com.capoo.profile.configuration;
+package com.capoo.notification.configuration;
 
-import com.capoo.profile.dto.ApiResponse;
-import com.capoo.profile.exception.ErrorCode;
+import com.capoo.notification.dto.ApiResponse;
+import com.capoo.notification.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

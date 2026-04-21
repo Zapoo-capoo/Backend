@@ -1,4 +1,4 @@
-package com.capoo.profile.dto.request;
+package com.capoo.notification.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

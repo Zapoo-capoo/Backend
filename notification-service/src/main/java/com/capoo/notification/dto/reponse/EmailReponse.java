@@ -1,4 +1,4 @@
-package com.capoo.profile.dto.request;
+package com.capoo.notification.dto.reponse;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,9 +8,6 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EmailUserRequest {
-    Recipient to;
-    String subject;
-    String htmlContent;;
-
+public class EmailReponse {
+    String messageId;
 }

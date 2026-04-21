@@ -1,16 +1,14 @@
-package com.capoo.profile.controller;
+package com.capoo.notification.controller;
 
 import com.capoo.event.dto.NotificationEvent;
-import com.capoo.profile.dto.request.EmailUserRequest;
-import com.capoo.profile.dto.request.Recipient;
-import com.capoo.profile.service.EmailService;
+import com.capoo.notification.dto.request.EmailUserRequest;
+import com.capoo.notification.dto.request.Recipient;
+import com.capoo.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @Component

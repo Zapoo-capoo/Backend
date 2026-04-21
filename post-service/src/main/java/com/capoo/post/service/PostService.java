@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class PostService {
     DateTimeFormater dateTimeFormater;
     ProfileClient profileClient;
     FileClient fileClient;
+    KafkaTemplate<String,String> kafkaTemplate;
     public PostResponse createPost(PostRequest postRequest) {
         Authentication auth=SecurityContextHolder.getContext().getAuthentication();
 
@@ -49,9 +51,9 @@ public class PostService {
                 .modifiedDate(Instant.now())
                 .build();
         postRepository.save(post);
+        pulishCreatedPostEvent(post);
         return postMapper.toPostResponse(post);
     }
-
     public PostResponse createPostWithMedia(String content, MultipartFile file) {
         Authentication auth=SecurityContextHolder.getContext().getAuthentication();
         String mediaUrl = null;
@@ -65,7 +67,6 @@ public class PostService {
                 log.warn("Failed to upload media: {}", ex.getMessage());
             }
         }
-
         Post post= Post.builder()
                 .content(content)
                 .userId(auth.getName())
@@ -76,7 +77,19 @@ public class PostService {
         postRepository.save(post);
         var postResponse = postMapper.toPostResponse(post);
         postResponse.setMediaUrl(mediaUrl);
+        pulishCreatedPostEvent(post);
         return postResponse;
+    }
+    public void pulishCreatedPostEvent(Post post) {
+
+        kafkaTemplate.send("post_created_event", post.getUserId())
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("Sent post created event for postId: {}", post.getId());
+                    } else {
+                        log.error("Failed to send post created event for postId: {}", post.getId(), ex);
+                    }
+                });
     }
 
     public PageResponse<PostResponse> getMyPosts(int page, int size){

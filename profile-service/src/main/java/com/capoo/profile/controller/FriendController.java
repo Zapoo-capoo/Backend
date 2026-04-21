@@ -61,5 +61,11 @@ public class FriendController {
                 .result(service.getAllFriendRequests())
                 .build();
     }
+    @GetMapping("/{userId}/friends")
+    public ApiResponse<List<UserProfileReponse>> getAllFriendById(@PathVariable String userId) {
+        return ApiResponse.<List<UserProfileReponse>>builder()
+                .result(service.getAllFriendRequestsById(userId))
+                .build();
+    }
 
 }

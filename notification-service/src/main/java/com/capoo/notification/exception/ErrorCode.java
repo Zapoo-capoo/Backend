@@ -1,4 +1,4 @@
-package com.capoo.profile.exception;
+package com.capoo.notification.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package com.capoo.profile.dto;
+package com.capoo.notification.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AccessLevel;

@@ -101,4 +101,13 @@ public class FriendService {
                 .map(userProfileMapper::toUserProfileResponse)
                 .toList();
     }
+    public List<UserProfileReponse> getAllFriendRequestsById(String profileId) {
+        String userId = profileId;
+        String id=repository.findByUserId(userId).orElseThrow(() -> new RuntimeException("User profile not found")).getId();
+        List<UserProfile> userProfiles= repository.getFriend(id);
+        return userProfiles.stream()
+                .filter(userProfile -> !userId.equals(userProfile.getUserId()))
+                .map(userProfileMapper::toUserProfileResponse)
+                .toList();
+    }
 }

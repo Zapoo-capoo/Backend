@@ -1,4 +1,4 @@
-package com.capoo.profile.exception;
+package com.capoo.notification.exception;
 
 public class AppException extends RuntimeException {
 

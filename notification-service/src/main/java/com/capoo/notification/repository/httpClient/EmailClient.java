@@ -1,7 +1,7 @@
-package com.capoo.profile.repository.httpClient;
+package com.capoo.notification.repository.httpClient;
 
-import com.capoo.profile.dto.reponse.EmailReponse;
-import com.capoo.profile.dto.request.EmailRequest;
+import com.capoo.notification.dto.reponse.EmailReponse;
+import com.capoo.notification.dto.request.EmailRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

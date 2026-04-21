@@ -1,4 +1,4 @@
-package com.capoo.profile.configuration;
+package com.capoo.notification.configuration;
 
 import com.nimbusds.jwt.SignedJWT;
 import org.springframework.security.oauth2.jwt.Jwt;
