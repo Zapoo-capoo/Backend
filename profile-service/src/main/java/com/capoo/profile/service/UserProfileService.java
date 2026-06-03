@@ -13,6 +13,8 @@ import com.capoo.profile.entity.UserProfile;
 import com.capoo.profile.exception.AppException;
 import com.capoo.profile.exception.ErrorCode;
 import com.capoo.profile.mapper.UserProfileMapper;
+import com.capoo.profile.realsync.ElasticSyncIndexUserProfiles;
+import com.capoo.profile.realsync.ElasticSyncUserProfileRepository;
 import com.capoo.profile.repository.UserProfileRepository;
 import com.capoo.profile.repository.httpClient.ChatClient;
 import com.capoo.profile.repository.httpClient.FileClient;
@@ -28,6 +30,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -40,6 +43,7 @@ public class UserProfileService {
     final FileClient fileClient;
     final ChatClient chatClient;
     final KafkaTemplate<String,Object> kafkaTemplate;
+    final ElasticSyncUserProfileRepository elasticSyncUserProfileRepository;
 
     @KafkaListener(topics = "user_created_event5")
     public void createProfile(@Payload UserProfileCreationRequest request) {
@@ -48,9 +52,11 @@ public class UserProfileService {
     }
     public UserProfileReponse createUserProfile(UserProfileCreationRequest request ) {
         try {
+            // Check if already exists for the email or username to avoid duplicate profile creation by elastic search
             UserProfile userProfile = userProfileMapper.toUserProfile(request);
             userProfile = userProfileRepository.save(userProfile);
             log.info("UserProfile{}",userProfile.toString());
+            elasticSyncUserProfileRepository.save(new ElasticSyncIndexUserProfiles(userProfile));
             ProfileCreatedEvent event = ProfileCreatedEvent.builder()
                     .userId(userProfile.getUserId())
                     .status("SUCCESS")
@@ -106,6 +112,7 @@ public class UserProfileService {
     }
 
     public UserProfileReponse getMyProfile() {
+
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getName();
 
@@ -124,6 +131,8 @@ public class UserProfileService {
         userProfileMapper.update(profile, request);
 
         UserProfile updated = userProfileRepository.save(profile);
+        elasticSyncUserProfileRepository.save(new ElasticSyncIndexUserProfiles(updated));
+
 
         // notify chat service to update participant info
         UpdateParticipantRequest updateParticipantRequest = UpdateParticipantRequest.builder()
@@ -154,6 +163,8 @@ public class UserProfileService {
         profile.setAvatar(response.getResult().getUrl());
 
         UserProfile updated = userProfileRepository.save(profile);
+        elasticSyncUserProfileRepository.save(new ElasticSyncIndexUserProfiles(updated));
+
 
         // notify chat service to update participant avatar
         UpdateParticipantRequest updateParticipantRequest = UpdateParticipantRequest.builder()
@@ -186,11 +197,17 @@ public class UserProfileService {
 
         // If keyword is null, treat it as empty string to return all friends
         String keyword = request.getKeyword() == null ? "" : request.getKeyword();
-
-        // Filter friends by username like the original search behavior and map to response
-        return friends.stream()
-                .filter(fp -> fp.getUsername() != null && fp.getUsername().contains(keyword))
-                .map(userProfileMapper::toUserProfileResponse)
+        return elasticSyncUserProfileRepository.findByUsernameContaining(keyword).stream()
+                .map(doc -> userProfileMapper.toUserProfileResponse(
+                        userProfileRepository.findById(doc.getId())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED))
+                ))
                 .toList();
+
+//        // Filter friends by username like the original search behavior and map to response
+//        return friends.stream()
+//                .filter(fp -> fp.getUsername() != null && fp.getUsername().contains(keyword))
+//                .map(userProfileMapper::toUserProfileResponse)
+//                .toList();
     }
 }

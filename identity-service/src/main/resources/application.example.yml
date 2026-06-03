@@ -1,0 +1,55 @@
+server:
+  port: ${IDENTITY_SERVICE_PORT:8080}
+  servlet:
+    context-path: /identity
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.capoo: ${LOG_LEVEL_APP:INFO}
+
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: ${DBMS_URL:jdbc:mysql://localhost:3306/identity}
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: ${DBMS_USERNAME:root}
+    password: ${DBMS_PASSWORD:changeme}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:true}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ${IDENTITY_KAFKA_GROUP_ID:identity-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+jwt:
+  signerKey: ${JWT_SIGNER_KEY:replace-with-base64-secret}
+  valid-duration: ${JWT_VALID_DURATION:360000}
+  refreshable-duration: ${JWT_REFRESHABLE_DURATION:360000}
+
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID:replace-with-google-client-id}
+    secret: ${GOOGLE_CLIENT_SECRET:replace-with-google-client-secret}
+  redirectUri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/authenticate}
+
+app:
+  services:
+    profile:
+      url: ${PROFILE_SERVICE_BASE_URL:http://localhost:8081/profile}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka}

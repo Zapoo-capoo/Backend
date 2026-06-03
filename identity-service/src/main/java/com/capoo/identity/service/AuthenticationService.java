@@ -78,6 +78,7 @@ public class AuthenticationService {
                 .build();
     }
     public String authenticate(AuthenticationRequest request) {
+        log.info("Signed key: {}", signerKey);
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));

@@ -1,36 +1,140 @@
+name: zapooo
 version: "3.9"
-
 services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    container_name: kibana
+    restart: always
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
   kafka:
     image: apache/kafka:3.7.0
     container_name: kafka
     hostname: kafka
+    restart: always
     ports:
       - "9094:9094"
     environment:
       # KRaft mode (no Zookeeper)
       KAFKA_NODE_ID: 0
       KAFKA_PROCESS_ROLES: broker,controller
-
       # Controller quorum
       KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
-
       # Listeners
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
-
       # Map protocol
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-
       # Controller listener
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-
       # Required for single node
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
       # Dev config
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       # Dev config cho Single Node (Sửa lỗi Coordinator Not Available)
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui-1
+    restart: always
+    ports:
+      - "9090:8080"
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG: "true"
+
+  mongo:
+    image: mongo:7
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    volumes:
+      - mongo_data:/data/db
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Tuanvip069@
+      MYSQL_DATABASE: identity
+    volumes:
+      - mysql_data:/var/lib/mysql
+  neo4j:
+    image: neo4j:5-community-ubi10
+    container_name: neo4j
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass 123456
+    volumes:
+      - redis_data:/data
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    restart: always
+    ports:
+      - "5540:5540"   # RedisInsight UI
+    environment:
+      RI_APP_PORT: 5540
+      RI_APP_HOST: 0.0.0.0
+      RI_REDIS_HOST0: redis
+      RI_REDIS_PORT0: 6379
+      RI_REDIS_USERNAME0: default
+      RI_REDIS_PASSWORD0: 123456
+    depends_on:
+      - redis
+volumes:
+  mongo_data:
+  redis_data:
+  mysql_data:
+  neo4j_data:
+  neo4j_logs:
+  kafka_data:
+  es_data:
