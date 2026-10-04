@@ -1,0 +1,81 @@
+# Production config of api-gateway, served by config-service from /config (see deploy/docker-compose.prod.yml).
+# Routes go straight to the containers by name, so they do not depend on Eureka being up.
+server:
+  port: 8888
+  servlet:
+    context-path: /api-gateway
+
+app:
+  api-prefix: /api/v1
+  services:
+    # The gateway asks identity-service to validate the token of every protected request
+    identity:
+      url: http://identity-service:8080/identity
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: identity_service
+          uri: http://identity-service:8080
+          predicates:
+            - Path=${app.api-prefix}/identity/**
+          filters:
+            - StripPrefix=2
+        - id: profile_service
+          uri: http://profile-service:8081
+          predicates:
+            - Path=${app.api-prefix}/profile/**
+          filters:
+            - StripPrefix=2
+        - id: chat_service
+          uri: http://chat-service:8085
+          predicates:
+            - Path=${app.api-prefix}/chat/**
+          filters:
+            - StripPrefix=2
+        - id: storage_service
+          uri: http://storage-service:7881
+          predicates:
+            - Path=${app.api-prefix}/storage-service/**
+          filters:
+            - StripPrefix=2
+        # post-service and notification-service are not deployed yet. Their routes are here so they work as soon as
+        # the containers exist (until then the gateway answers 503 for these paths).
+        - id: post_service
+          uri: http://post-service:8083
+          predicates:
+            - Path=${app.api-prefix}/post/**
+          filters:
+            - StripPrefix=2
+        - id: notification_service
+          uri: http://notification-service:8082
+          predicates:
+            - Path=${app.api-prefix}/notification/**
+          filters:
+            - StripPrefix=2
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: identity-service
+        url: ${app.api-prefix}/identity/v3/api-docs
+      - name: profile-service
+        url: ${app.api-prefix}/profile/v3/api-docs
+      - name: chat-service
+        url: ${app.api-prefix}/chat/v3/api-docs
+      - name: storage-service
+        url: ${app.api-prefix}/storage-service/v3/api-docs

@@ -1,0 +1,28 @@
+# The Docker build context is the repository root (see deploy/Dockerfile). Keep it small and keep secrets out.
+
+# Git, IDE, local tooling
+.git
+.gitignore
+.idea
+.vscode
+**/.mvn/wrapper/maven-wrapper.jar
+**/*.iml
+
+# Build output (the image builds its own)
+**/target
+
+# Real per-service config with secrets, never part of an image (templates are in environment-service/example and
+# environment-service/prod)
+environment-service/local
+**/application.yaml
+**/application.yml.local
+.env
+**/.env
+*.env
+
+# Not needed to build a service
+home
+deploy
+docs
+**/README.md
+**/*.md
