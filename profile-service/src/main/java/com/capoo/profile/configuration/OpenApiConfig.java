@@ -25,7 +25,8 @@ public class OpenApiConfig {
                         .description("User profiles, friends & search")
                         .version("1.0.0"))
                 .servers(List.of(
-                        new Server().url("http://localhost:8888/api/v1/profile").description("Via API Gateway"),
+                        // Relative: resolved against the host the Swagger page was opened from (local or server)
+                        new Server().url("/api/v1/profile").description("Via API Gateway"),
                         new Server().url("http://localhost:8081/profile").description("Direct")))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME))
                 .components(new Components()

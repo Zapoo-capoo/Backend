@@ -25,7 +25,8 @@ public class OpenApiConfig {
                         .description("Conversations & messages (realtime via Socket.IO on port 8099)")
                         .version("1.0.0"))
                 .servers(List.of(
-                        new Server().url("http://localhost:8888/api/v1/chat").description("Via API Gateway"),
+                        // Relative: resolved against the host the Swagger page was opened from (local or server)
+                        new Server().url("/api/v1/chat").description("Via API Gateway"),
                         new Server().url("http://localhost:8085/chat").description("Direct")))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME))
                 .components(new Components()
