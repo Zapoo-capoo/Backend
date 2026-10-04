@@ -175,6 +175,8 @@ services:
       # Serve the production config files (environment-service/prod, copied to ./config on the server)
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS: file:/config/
+      # Its application.yml logs every web request at DEBUG, far too chatty for production
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: INFO
     volumes:
       - ./config:/config:ro
     mem_limit: 320m
