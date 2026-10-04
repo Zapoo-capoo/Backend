@@ -1,0 +1,62 @@
+# Production config of identity-service, served by config-service from /config (see deploy/docker-compose.prod.yml).
+# No secrets here: every ${NAME} is read from the environment (deploy/.env on the server).
+server:
+  port: 8080
+  servlet:
+    context-path: /identity
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+logging:
+  level:
+    root: INFO
+    com.capoo: INFO
+
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:3306/${MYSQL_DATABASE:identity}?serverTimezone=UTC
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: identity-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+jwt:
+  signerKey: ${JWT_SIGNER_KEY}
+  valid-duration: ${JWT_VALID_DURATION:360000} # seconds
+  refreshable-duration: ${JWT_REFRESHABLE_DURATION:360000}
+
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID:not-configured}
+    secret: ${GOOGLE_CLIENT_SECRET:not-configured}
+  redirectUri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/authenticate}
+
+app:
+  services:
+    profile:
+      url: http://profile-service:8081/profile

@@ -1,0 +1,50 @@
+# Production config of profile-service, served by config-service from /config (see deploy/docker-compose.prod.yml).
+# No secrets here: every ${NAME} is read from the environment (deploy/.env on the server).
+server:
+  port: 8081
+  servlet:
+    context-path: /profile
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+spring:
+  application:
+    name: profile-service
+  neo4j:
+    uri: bolt://${NEO4J_HOST:neo4j}:7687
+    authentication:
+      username: neo4j
+      password: ${NEO4J_PASSWORD}
+    keyspace: ks_profiles
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: identity-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+app:
+  services:
+    storage:
+      url: http://storage-service:7881/storage-service
+  storage:
+    # Public links to uploaded files, as seen by browsers (through the gateway)
+    public-url: ${PUBLIC_BASE_URL}/api/v1/storage-service/files

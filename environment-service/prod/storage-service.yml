@@ -1,0 +1,97 @@
+# Production config of storage-service, served by config-service from /config (see deploy/docker-compose.prod.yml).
+# No secrets here: every ${NAME} is read from the environment (deploy/.env on the server).
+server:
+  port: 7881
+  servlet:
+    context-path: /storage-service
+  tomcat:
+    max-swallow-size: 1GB
+    max-http-form-post-size: 1GB
+    max-http-header-size: 65536
+
+signature:
+  md5:
+    secret-key: ${STORAGE_SIGNATURE_SECRET}
+
+logging:
+  level:
+    org:
+      springframework:
+        web: ERROR
+
+spring:
+  application:
+    name: storage-service
+  main:
+    allow-bean-definition-overriding: true
+  task:
+    scheduling:
+      pool:
+        size: 2
+  mvc:
+    async:
+      request-timeout: 3600000
+  servlet:
+    multipart:
+      file-size-threshold: 10KB
+      enabled: true
+      # Videos are capped at 100MB per file by limit-size-in-mb below, a request carries at most 5 files
+      max-file-size: 200MB
+      max-request-size: 600MB
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:5432/${POSTGRES_DB:storage}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    hikari:
+      pool-name: storage-service-pool
+      maximum-pool-size: 5
+      max-lifetime: 1800000
+      idle-timeout: 300000
+      connection-timeout: 30000
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+storage:
+  datastore:
+    mode: postgres
+  prefix: common
+  hls-enabled: false
+  object:
+    mode: s3
+    base-prefix: "common"
+    read-fallback-local-enabled: true
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${S3_REGION:ap-southeast-1}
+      path-style-access-enabled: false
+      credentials:
+        # default = the AWS default credential chain, i.e. the IAM role attached to the EC2 instance (no keys on the
+        # server). Set S3_CREDENTIALS_MODE=static together with S3_ACCESS_KEY / S3_SECRET_KEY to use access keys.
+        mode: ${S3_CREDENTIALS_MODE:default}
+        access-key: ${S3_ACCESS_KEY:}
+        secret-key: ${S3_SECRET_KEY:}
+    local:
+      root: /app/data/media
+  video:
+    qualities: 240, 360, 720, 1080
+    duration: 36000
+
+limit-size-in-mb:
+  video: 100
+  image: 20
+  office: 5
+  audio: 5
+
+cdn-info:
+  invalidating: false
+
+media:
+  # ffmpeg is installed in the image (see deploy/Dockerfile, INSTALL_FFMPEG)
+  ffmpeg-path: ffmpeg
+
+app:
+  gateway:
+    domain-name: ${PUBLIC_BASE_URL}/api/v1

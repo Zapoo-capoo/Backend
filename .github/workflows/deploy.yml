@@ -1,0 +1,155 @@
+name: Deploy to production
+
+# Continuous deployment only (no tests here): every push to main builds the service images, pushes them to GHCR and
+# deploys them to the EC2 server. The server's deploy script waits for every container to be healthy and rolls back to
+# the previous version when the new one does not start.
+#
+# Roll back by hand: Actions > Deploy to production > Run workflow, give an older image tag (like sha-1a2b3c4).
+# Setup of the server and of the secrets used below: deploy/README.md
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "environment-service/example/**"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Deploy this existing image tag without building (rollback). Empty = build the current commit"
+        required: false
+        default: ""
+
+# One   deployment at a time, a running one is never cancelled halfway
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      registry: ${{ steps.vars.outputs.registry }}
+      build: ${{ steps.vars.outputs.build }}
+    steps:
+      - id: vars
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+        run: |
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "registry=ghcr.io/${owner}/backend" >> "$GITHUB_OUTPUT"
+          if [ -n "${INPUT_TAG}" ]; then
+            echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { module: discovery-service, java: "17", ffmpeg: "false" }
+          - { module: config-service, java: "17", ffmpeg: "false" }
+          - { module: storage-service, java: "17", ffmpeg: "true" }
+          - { module: identity-service, java: "21", ffmpeg: "false" }
+          - { module: profile-service, java: "21", ffmpeg: "false" }
+          - { module: chat-service, java: "21", ffmpeg: "false" }
+          - { module: api-gateway, java: "21", ffmpeg: "false" }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.module }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          push: true
+          build-args: |
+            MODULE=${{ matrix.module }}
+            JAVA_VERSION=${{ matrix.java }}
+            INSTALL_FFMPEG=${{ matrix.ffmpeg }}
+          tags: |
+            ${{ needs.prepare.outputs.registry }}/${{ matrix.module }}:${{ needs.prepare.outputs.tag }}
+            ${{ needs.prepare.outputs.registry }}/${{ matrix.module }}:latest
+          cache-from: type=gha,scope=${{ matrix.module }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.module }}
+
+  deploy:
+    needs: [prepare, build]
+    # Run when the images were built, or when an existing tag is redeployed (build skipped). Never after a failed build
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-latest
+    # Protected environment: add "Required reviewers" in the repository settings to approve each production deployment
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            # First connection is trusted. Put the server's host key in the EC2_KNOWN_HOSTS secret to pin it
+            ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Copy deployment files
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy"
+          $SSH "$USER_NAME@$HOST" 'mkdir -p /opt/zapoo/config'
+          rsync -e "$SSH" -az deploy/docker-compose.prod.yml deploy/deploy.sh "$USER_NAME@$HOST:/opt/zapoo/"
+          # The production config files are served by config-service, keep the server in sync with the repository
+          rsync -e "$SSH" -az --delete environment-service/prod/ "$USER_NAME@$HOST:/opt/zapoo/config/"
+
+      - name: Write .env on the server
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+          ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
+        run: |
+          printf '%s\n' "$ENV_FILE" | ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" 'umask 077 && cat > /opt/zapoo/.env'
+
+      - name: Deploy ${{ needs.prepare.outputs.tag }}
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REGISTRY: ${{ needs.prepare.outputs.registry }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          # The token only lives for this job. It is sent over the SSH connection, never written into a file
+          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" \
+            "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+          ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" \
+            "chmod +x /opt/zapoo/deploy.sh && REGISTRY='$REGISTRY' /opt/zapoo/deploy.sh '$TAG'"
