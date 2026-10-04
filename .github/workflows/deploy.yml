@@ -59,13 +59,14 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - { module: discovery-service, java: "17", ffmpeg: "false" }
-          - { module: config-service, java: "17", ffmpeg: "false" }
-          - { module: storage-service, java: "17", ffmpeg: "true" }
-          - { module: identity-service, java: "21", ffmpeg: "false" }
-          - { module: profile-service, java: "21", ffmpeg: "false" }
-          - { module: chat-service, java: "21", ffmpeg: "false" }
-          - { module: api-gateway, java: "21", ffmpeg: "false" }
+          # java = runtime JRE, jdk = compiler. The Java 17 modules (Spring Boot 3.1, old Lombok) must be compiled by JDK 17
+          - { module: discovery-service, java: "17", jdk: "17", ffmpeg: "false" }
+          - { module: config-service, java: "17", jdk: "17", ffmpeg: "false" }
+          - { module: storage-service, java: "17", jdk: "17", ffmpeg: "true" }
+          - { module: identity-service, java: "21", jdk: "21", ffmpeg: "false" }
+          - { module: profile-service, java: "21", jdk: "21", ffmpeg: "false" }
+          - { module: chat-service, java: "21", jdk: "21", ffmpeg: "false" }
+          - { module: api-gateway, java: "21", jdk: "21", ffmpeg: "false" }
     steps:
       - uses: actions/checkout@v4
 
@@ -85,6 +86,7 @@ jobs:
           push: true
           build-args: |
             MODULE=${{ matrix.module }}
+            BUILD_JDK=${{ matrix.jdk }}
             JAVA_VERSION=${{ matrix.java }}
             INSTALL_FFMPEG=${{ matrix.ffmpeg }}
           tags: |
