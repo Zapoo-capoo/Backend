@@ -151,7 +151,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-      args: { MODULE: discovery-service, JAVA_VERSION: "17" }
+      args: { MODULE: discovery-service, BUILD_JDK: "17", JAVA_VERSION: "17" }
     depends_on:
       # Order only (discovery does not use the config server): config first, then discovery
       config-service: { condition: service_healthy }
@@ -169,7 +169,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-      args: { MODULE: config-service, JAVA_VERSION: "17" }
+      args: { MODULE: config-service, BUILD_JDK: "17", JAVA_VERSION: "17" }
     environment:
       <<: *java-env
       # Serve the production config files (environment-service/prod, copied to ./config on the server)
@@ -262,7 +262,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-      args: { MODULE: storage-service, JAVA_VERSION: "17", INSTALL_FFMPEG: "true" }
+      args: { MODULE: storage-service, BUILD_JDK: "17", JAVA_VERSION: "17", INSTALL_FFMPEG: "true" }
     depends_on:
       config-service: { condition: service_healthy }
       postgres: { condition: service_healthy }

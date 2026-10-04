@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1.7
-# Declared before the first FROM so it can be used in the FROM of the runtime stage
+# Declared before the first FROM so they can be used in the FROM lines
 ARG JAVA_VERSION=21
+# JDK that compiles the module. Use 17 for the modules that target Java 17 (storage-service, config-service,
+# discovery-service): they run on Spring Boot 3.1 whose Lombok does not work with the JDK 21 compiler
+# ("NoSuchFieldError: JCTree$JCImport ... qualid")
+ARG BUILD_JDK=21
 #
 # One Dockerfile for every Spring Boot service of this repository. Build from the repository root:
 #
@@ -8,11 +12,12 @@ ARG JAVA_VERSION=21
 #
 # Build args
 #   MODULE          Maven module to build (api-gateway, chat-service, ...)
+#   BUILD_JDK       JDK used to compile (21 by default, 17 for the Java 17 modules, see below)
 #   JAVA_VERSION    Java of the runtime image. 21 for most services, 17 for config-service, discovery-service and
 #                   storage-service (their poms target Java 17)
 #   INSTALL_FFMPEG  "true" for storage-service, it cuts video thumbnails and transcodes videos with ffmpeg
 
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-${BUILD_JDK} AS build
 ARG MODULE
 WORKDIR /src
 COPY . .
