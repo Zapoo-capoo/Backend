@@ -152,6 +152,13 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
       args: { MODULE: discovery-service, BUILD_JDK: "17", JAVA_VERSION: "17" }
+    environment:
+      <<: *java-env
+      # Do not depend on the module's application.yml being inside the image
+      SERVER_PORT: "8761"
+      SPRING_APPLICATION_NAME: discovery-service
+      EUREKA_CLIENT_REGISTERWITHEUREKA: "false"
+      EUREKA_CLIENT_FETCHREGISTRY: "false"
     depends_on:
       # Order only (discovery does not use the config server): config first, then discovery
       config-service: { condition: service_healthy }
@@ -172,6 +179,9 @@ services:
       args: { MODULE: config-service, BUILD_JDK: "17", JAVA_VERSION: "17" }
     environment:
       <<: *java-env
+      # Do not depend on the module's application.yml being inside the image (it was missing: port 8080 was used)
+      SERVER_PORT: "7720"
+      SPRING_APPLICATION_NAME: config-service
       # Serve the production config files (environment-service/prod, copied to ./config on the server)
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS: file:/config/
