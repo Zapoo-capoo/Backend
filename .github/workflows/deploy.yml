@@ -115,6 +115,9 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
+          # Keep idle connections alive. The first deployment dropped with "Broken pipe" while the server was busy
+          printf 'Host *\n  ServerAliveInterval 20\n  ServerAliveCountMax 15\n  ConnectTimeout 30\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
           if [ -n "$KNOWN_HOSTS" ]; then
             printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
@@ -150,8 +153,35 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         run: |
+          SSH="ssh -i $HOME/.ssh/id_deploy"
+
           # The token only lives for this job. It is sent over the SSH connection, never written into a file
-          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" \
-            "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
-          ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" \
-            "chmod +x /opt/zapoo/deploy.sh && REGISTRY='$REGISTRY' /opt/zapoo/deploy.sh '$TAG'"
+          printf '%s' "$GHCR_TOKEN" | $SSH "$USER_NAME@$HOST" "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+
+          # Start the deployment DETACHED on the server: pulling images and waiting for every container to be healthy
+          # takes many minutes, and a dropped SSH connection must not kill it halfway. The script reports its progress
+          # in /opt/zapoo/.deploy_status (running | success | failed) and /opt/zapoo/deploy.log
+          $SSH "$USER_NAME@$HOST" "cd /opt/zapoo && chmod +x deploy.sh && rm -f .deploy_status && : > deploy.log \
+            && REGISTRY='$REGISTRY' setsid nohup ./deploy.sh '$TAG' > deploy.log 2>&1 < /dev/null & sleep 1; echo started"
+
+          # Follow it with short SSH calls (a failed poll is simply retried)
+          SEEN=0
+          for attempt in $(seq 1 180); do   # 180 x 15 s = 45 minutes at most
+            if OUT=$($SSH "$USER_NAME@$HOST" "(cat /opt/zapoo/.deploy_status 2>/dev/null || echo starting); echo @@LOG@@; tail -n +$((SEEN + 1)) /opt/zapoo/deploy.log 2>/dev/null"); then
+              STATUS=$(printf '%s\n' "$OUT" | sed -n '1p')
+              LOG=$(printf '%s\n' "$OUT" | sed '1,/^@@LOG@@$/d')
+              if [ -n "$LOG" ]; then
+                printf '%s\n' "$LOG"
+                SEEN=$((SEEN + $(printf '%s\n' "$LOG" | wc -l)))
+              fi
+              case "$STATUS" in
+                success) echo "::notice::Deployment of $TAG succeeded"; exit 0 ;;
+                failed)  echo "::error::Deployment of $TAG FAILED (see the log above, the server rolled back if it could)"; exit 1 ;;
+              esac
+            else
+              echo "(could not reach the server, retrying)"
+            fi
+            sleep 15
+          done
+          echo "::error::Timed out waiting for the deployment to finish"
+          exit 1
