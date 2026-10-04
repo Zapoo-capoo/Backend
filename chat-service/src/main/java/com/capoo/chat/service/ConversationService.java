@@ -22,5 +22,11 @@ public interface ConversationService {
     /** Marks the conversation as seen by the current user ({@code hasSeen = true} on their participant entry). */
     void markSeen(String conversationId);
 
+    /**
+     * Whether the current user has seen the conversation: false while a message sent by someone else is still
+     * unopened. Conversations from before {@code hasSeen} existed count as seen.
+     */
+    boolean hasSeen(String conversationId);
+
     void updateParticipant(UpdateParticipantRequest request);
 }

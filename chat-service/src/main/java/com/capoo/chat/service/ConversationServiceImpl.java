@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +50,9 @@ public class ConversationServiceImpl implements ConversationService {
     @Override
     public List<ConversationResponse> myConversations() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<Conversation> conversations = conversationRepository.findAllByParticipantIdsContains(userId);
+        // Most recently modified first. Conversations without a modifiedDate sort last (MongoDB treats null as lowest)
+        List<Conversation> conversations = conversationRepository.findAllByParticipantIdsContains(
+                userId, Sort.by(Sort.Direction.DESC, "modifiedDate"));
 
         return conversations.stream().map(this::toConversationResponse).toList();
     }
@@ -173,6 +176,21 @@ public class ConversationServiceImpl implements ConversationService {
         if (!conversationRepository.markSeen(conversationId, userId)) {
             throw new AppException(ErrorCode.CONVERSATION_NOT_EXISTED);
         }
+    }
+
+    @Override
+    public boolean hasSeen(String conversationId) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Conversation conversation = conversationRepository
+                .findById(conversationId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
+        // Not a participant gets the same answer as an unknown conversation
+        ParticipantInfo me = conversation.getParticipants().stream()
+                .filter(participant -> userId.equals(participant.getUserId()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
+        // Only an explicit false means unseen, a missing value (older conversation) was never marked unseen
+        return !Boolean.FALSE.equals(me.getHasSeen());
     }
 
     @Override

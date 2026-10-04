@@ -53,6 +53,13 @@ public class ConversationController {
         return ApiResponse.<Boolean>builder().result(true).build();
     }
 
+    @GetMapping("/{conversationId}/seen")
+    ApiResponse<Boolean> hasSeen(@PathVariable("conversationId") String conversationId) {
+        return ApiResponse.<Boolean>builder()
+                .result(conversationService.hasSeen(conversationId))
+                .build();
+    }
+
     @GetMapping("/my-conversations")
     ApiResponse<List<ConversationResponse>> myConversations() {
         return ApiResponse.<List<ConversationResponse>>builder()
