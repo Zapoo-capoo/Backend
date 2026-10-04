@@ -37,6 +37,10 @@ application-*.yaml
 application-*.yml
 !application.example.yml
 !application-*.example.yml
+# Not secret, and these two services do not start properly without them (default port 8080, no native config).
+# Without these exceptions the CI build of their Docker images does not contain them.
+!config-service/src/main/resources/application.yml
+!discovery-service/src/main/resources/application.yml
 
 # Real per-service config served by config-service (contains secrets).
 # Commit only the templates in environment-service/example/
