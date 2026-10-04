@@ -1,13 +1,14 @@
 package com.capoo.profile.entity;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.springframework.data.neo4j.core.schema.*;
-import org.springframework.data.neo4j.core.support.UUIDStringGenerator;
-
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.springframework.data.neo4j.core.schema.*;
+import org.springframework.data.neo4j.core.support.UUIDStringGenerator;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -20,8 +21,10 @@ public class UserProfile {
     @Id
     @GeneratedValue(generatorClass = UUIDStringGenerator.class)
     String id;
+
     @Property("userId")
     String userId;
+
     String email;
     String username;
     String firstName;
@@ -29,6 +32,7 @@ public class UserProfile {
     LocalDate dob;
     String lastName;
     String avatar;
+
     @Relationship(type = "FRIEND", direction = Relationship.Direction.OUTGOING)
     private Set<UserProfile> friends;
     // request gửi đi

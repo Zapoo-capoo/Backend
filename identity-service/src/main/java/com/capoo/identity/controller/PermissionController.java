@@ -1,16 +1,18 @@
 package com.capoo.identity.controller;
 
-import com.capoo.identity.dto.ApiResponse;
+import java.util.List;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.capoo.dto.ApiResponse;
 import com.capoo.identity.dto.request.PermissionRequest;
 import com.capoo.identity.dto.response.PermissionResponse;
 import com.capoo.identity.service.PermissionService;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/permissions")

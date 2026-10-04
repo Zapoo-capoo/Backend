@@ -1,6 +1,6 @@
 package com.capoo.post.configuration;
 
-import com.capoo.post.dto.ApiResponse;
+import com.capoo.dto.ApiResponse;
 import com.capoo.post.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;

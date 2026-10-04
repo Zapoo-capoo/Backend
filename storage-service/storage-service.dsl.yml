@@ -1,0 +1,660 @@
+system:
+  name: "Storage Service"
+  description: "Reusable file storage service: upload, metadata management, media transformation, streaming and content delivery"
+  version: "1.0.0"
+  domain: "storage"
+  owner: "Platform Team"
+  type: "backend"
+  metadata:
+    tags:
+      - "storage"
+      - "media"
+      - "upload"
+      - "streaming"
+    tier: "infrastructure"
+
+modules:
+  - name: "file_management"
+    description: "Manages the full file lifecycle: upload, metadata persistence, update, delete, and signature validation"
+    version: "1.0.0"
+
+    entities:
+      - name: "File"
+        description: "Metadata record for an uploaded file"
+        fields:
+          - name: "id"
+            type: "string"
+            required: true
+            nullable: false
+            description: "Primary key; timestamp-based unique ID with configurable prefix"
+            ui_hint:
+              input_type: "text"
+              label: "File ID"
+          - name: "originalName"
+            type: "string"
+            required: true
+            nullable: false
+            description: "Original filename as provided at upload time"
+            validation:
+              max_length: 512
+            ui_hint:
+              input_type: "text"
+              label: "Original Name"
+          - name: "extension"
+            type: "string"
+            required: true
+            nullable: false
+            description: "File extension (e.g. .jpg, .mp4)"
+            validation:
+              max_length: 20
+            ui_hint:
+              input_type: "text"
+              label: "Extension"
+          - name: "type"
+            type: "string"
+            required: true
+            nullable: false
+            description: "MIME type of the file (e.g. image/jpeg, video/mp4)"
+            validation:
+              max_length: 128
+              custom_validator: "SupportedMimeTypeValidator"
+            ui_hint:
+              input_type: "text"
+              label: "MIME Type"
+          - name: "size"
+            type: "integer"
+            required: true
+            nullable: false
+            description: "File size in bytes"
+            validation:
+              min_value: 0
+            ui_hint:
+              input_type: "number"
+              label: "Size (bytes)"
+          - name: "description"
+            type: "text"
+            nullable: true
+            description: "Optional description provided by the uploader"
+            ui_hint:
+              input_type: "textarea"
+              label: "Description"
+              placeholder: "Enter file description..."
+          - name: "createdAt"
+            type: "datetime"
+            required: true
+            nullable: false
+            description: "Creation timestamp (auto-audited)"
+          - name: "createdBy"
+            type: "string"
+            nullable: true
+            description: "ID of the user who uploaded the file (extracted from request header)"
+          - name: "updatedAt"
+            type: "datetime"
+            required: true
+            nullable: false
+            description: "Last update timestamp (auto-audited)"
+          - name: "updatedBy"
+            type: "string"
+            nullable: true
+            description: "ID of the user who last updated the file"
+        indexes:
+          - name: "idx_file_id"
+            fields:
+              - "id"
+            unique: true
+            type: "btree"
+          - name: "idx_file_type"
+            fields:
+              - "type"
+            unique: false
+            type: "btree"
+          - name: "idx_file_created_at"
+            fields:
+              - "createdAt"
+            unique: false
+            type: "btree"
+        constraints:
+          - type: "unique"
+            name: "uq_file_id"
+            fields:
+              - "id"
+          - type: "check"
+            name: "chk_file_size_positive"
+            expression: "size >= 0"
+
+    features:
+      - name: "file_crud"
+        type: "crud"
+        description: "Upload, retrieve metadata, update description, and delete one or multiple files"
+        enabled: true
+        permissions:
+          - "file:read"
+          - "file:write"
+          - "file:delete"
+        api_endpoints:
+          - "/storage/files/upload-file"
+          - "/storage/files/upload-files"
+          - "/storage/files/{id}"
+          - "/storage/files/batch"
+        ui_components:
+          - "FileUploader"
+          - "FileList"
+          - "FileDetail"
+        configuration:
+          soft_delete: false
+          audit: true
+          max_batch_delete: 100
+      - name: "file_search"
+        type: "search"
+        description: "List files with pagination"
+        enabled: true
+        permissions:
+          - "file:read"
+        configuration:
+          filter_fields:
+            - "type"
+            - "createdAt"
+            - "createdBy"
+      - name: "file_validation"
+        type: "custom"
+        description: "Validate file integrity using MD5 signature"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/validation"
+        configuration:
+          hook: "fileSignatureValidationHook"
+      - name: "file_base64"
+        type: "custom"
+        description: "Convert a file to a Base64-encoded string"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/base64/{id}"
+        configuration:
+          hook: "fileBase64ConversionHook"
+      - name: "size_configuration"
+        type: "custom"
+        description: "Return configured upload size limits per file category"
+        enabled: true
+        configuration:
+          hook: "sizeLimitConfigHook"
+
+    policies:
+      - name: "mime_type_whitelist"
+        description: "Only allow MIME types that are in the supported file type whitelist"
+        rule: "file.type IN SUPPORT_FILE_TYPE => allow upload"
+        applies_to:
+          - "File"
+          - "File.create"
+        enforcement: "pre"
+        priority: 10
+      - name: "xxe_protection"
+        description: "Reject XML/SVG files containing malicious XXE declarations"
+        rule: "file.content NOT CONTAINS '<!ENTITY' WITH (SYSTEM|PUBLIC) => allow upload"
+        applies_to:
+          - "File"
+          - "File.create"
+        enforcement: "pre"
+        priority: 9
+      - name: "file_size_limit"
+        description: "Reject files that exceed the size limit for their category"
+        rule: "image <= 20MB; video <= 100MB; audio <= 5MB; office <= 5MB"
+        applies_to:
+          - "File"
+          - "File.create"
+        enforcement: "pre"
+        priority: 8
+      - name: "audit_file_change"
+        description: "Log every create, update, and delete operation on File"
+        rule: "audit.onChange(File)"
+        applies_to:
+          - "File"
+        enforcement: "post"
+        priority: 5
+
+    permissions:
+      roles:
+        - "ADMIN"
+        - "SERVICE"
+        - "USER"
+        - "ANONYMOUS"
+      actions:
+        - action: "file:read"
+          roles:
+            - "ADMIN"
+            - "SERVICE"
+            - "USER"
+            - "ANONYMOUS"
+        - action: "file:write"
+          roles:
+            - "ADMIN"
+            - "SERVICE"
+            - "USER"
+        - action: "file:delete"
+          roles:
+            - "ADMIN"
+            - "SERVICE"
+            - "USER"
+
+    api_endpoints:
+      - method: "POST"
+        path: "/storage/files/upload-file"
+        description: "Upload a single file and return its metadata"
+        operation: "create"
+        entity: "File"
+        permissions:
+          - "file:write"
+        request_schema:
+          type: "object"
+          properties:
+            file:
+              type: "string"
+              format: "binary"
+            description:
+              type: "string"
+      - method: "POST"
+        path: "/storage/files/upload-files"
+        description: "Upload multiple files at once and return a list of metadata"
+        operation: "create"
+        entity: "File"
+        permissions:
+          - "file:write"
+        request_schema:
+          type: "object"
+          properties:
+            files:
+              type: "array"
+              items:
+                type: "string"
+                format: "binary"
+            description:
+              type: "string"
+      - method: "GET"
+        path: "/storage/files/{id}"
+        description: "Get file metadata by ID"
+        operation: "read"
+        entity: "File"
+        permissions:
+          - "file:read"
+      - method: "PUT"
+        path: "/storage/files/{id}"
+        description: "Update file description"
+        operation: "update"
+        entity: "File"
+        permissions:
+          - "file:write"
+        request_schema:
+          type: "object"
+          required:
+            - "description"
+          properties:
+            description:
+              type: "string"
+      - method: "DELETE"
+        path: "/storage/files/{id}"
+        description: "Delete a single file"
+        operation: "delete"
+        entity: "File"
+        permissions:
+          - "file:delete"
+      - method: "DELETE"
+        path: "/storage/files/batch"
+        description: "Delete multiple files by ID list"
+        operation: "delete"
+        entity: "File"
+        permissions:
+          - "file:delete"
+        request_schema:
+          type: "object"
+          required:
+            - "file_ids"
+          properties:
+            file_ids:
+              type: "array"
+              items:
+                type: "string"
+      - method: "POST"
+        path: "/storage/files/validation"
+        description: "Validate file existence and integrity using MD5 signature"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+        request_schema:
+          type: "object"
+          required:
+            - "id"
+            - "signature"
+          properties:
+            id:
+              type: "string"
+            signature:
+              type: "string"
+      - method: "GET"
+        path: "/storage/files/base64/{id}"
+        description: "Retrieve file content encoded as a Base64 string"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+      - method: "GET"
+        path: "/storage/files/size-configuration"
+        description: "Return upload size limits per file category (image, video, audio, office)"
+        operation: "custom"
+        permissions:
+          - "file:read"
+
+  - name: "media_delivery"
+    description: "Content delivery and streaming: file download, web/thumbnail images, video streaming, and ZIP export"
+    version: "1.0.0"
+    dependencies:
+      - "file_management"
+
+    features:
+      - name: "file_download"
+        type: "custom"
+        description: "Download the original file with HTTP Range Request support (partial content / 206)"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/download/{file}"
+        configuration:
+          hook: "fileDownloadHook"
+          supports_range_request: true
+      - name: "web_image_delivery"
+        type: "custom"
+        description: "Serve web-optimized WebP images with 30-day public cache"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/web/{file}"
+        configuration:
+          hook: "webImageDeliveryHook"
+          cache_max_age_days: 30
+          format: "webp"
+          max_width: 1500
+          max_height: 1000
+      - name: "thumbnail_delivery"
+        type: "custom"
+        description: "Serve WebP thumbnail images with 30-day public cache"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/thumbnail/{file}"
+        configuration:
+          hook: "thumbnailDeliveryHook"
+          cache_max_age_days: 30
+          format: "webp"
+          max_width: 1200
+          max_height: 800
+      - name: "video_streaming"
+        type: "custom"
+        description: "Stream video at selected quality (240p/360p/720p/1080p) with HTTP Range Request support"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/stream-video/{file}"
+        configuration:
+          hook: "videoStreamingHook"
+          supports_range_request: true
+          qualities:
+            - 240
+            - 360
+            - 720
+            - 1080
+      - name: "zip_download"
+        type: "export"
+        description: "Bundle multiple files into a single downloadable ZIP archive"
+        enabled: true
+        permissions:
+          - "file:read"
+        api_endpoints:
+          - "/storage/files/download-zip"
+        configuration:
+          max_files_per_zip: 100
+
+    permissions:
+      roles:
+        - "ADMIN"
+        - "SERVICE"
+        - "USER"
+        - "ANONYMOUS"
+      actions:
+        - action: "file:read"
+          roles:
+            - "ADMIN"
+            - "SERVICE"
+            - "USER"
+            - "ANONYMOUS"
+
+    api_endpoints:
+      - method: "GET"
+        path: "/storage/files/download/{file}"
+        description: "Download original file with Range Request support"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+        query_parameters:
+          - name: "Range"
+            type: "string"
+            required: false
+            description: "HTTP Range header (bytes=start-end)"
+      - method: "GET"
+        path: "/storage/files/web/{file}"
+        description: "Get web-optimized WebP image"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+      - method: "GET"
+        path: "/storage/files/thumbnail/{file}"
+        description: "Get WebP thumbnail image"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+      - method: "GET"
+        path: "/storage/files/stream-video/{file}"
+        description: "Stream video at the requested quality with Range Request support"
+        operation: "custom"
+        entity: "File"
+        permissions:
+          - "file:read"
+        query_parameters:
+          - name: "quality"
+            type: "integer"
+            required: false
+            description: "Video quality: 240, 360, 720, or 1080"
+      - method: "POST"
+        path: "/storage/files/download-zip"
+        description: "Download multiple files as a ZIP archive"
+        operation: "custom"
+        permissions:
+          - "file:read"
+        request_schema:
+          type: "object"
+          required:
+            - "files"
+          properties:
+            files:
+              type: "array"
+              items:
+                type: "string"
+            name:
+              type: "string"
+              description: "Optional ZIP filename"
+
+  - name: "media_transformation"
+    description: "Asynchronous media processing: images to multi-size WebP, videos to multiple quality levels"
+    version: "1.0.0"
+    dependencies:
+      - "file_management"
+
+    features:
+      - name: "image_webp_conversion"
+        type: "custom"
+        description: "Async conversion of images to WebP in web, mobile, and thumbnail variants; supports EXIF rotation and SVG"
+        enabled: true
+        configuration:
+          hook: "imageWebpConversionHook"
+          async: true
+          executor: "mediaTaskExecutor"
+          versions:
+            - name: "web"
+              max_width: 1500
+              max_height: 1000
+            - name: "mobile"
+              max_width: 800
+              max_height: 600
+            - name: "thumbnail"
+              max_width: 1200
+              max_height: 800
+      - name: "video_transcoding"
+        type: "custom"
+        description: "Async video transcoding to multiple quality levels (240p/360p/720p/1080p)"
+        enabled: true
+        configuration:
+          hook: "videoTranscodingHook"
+          async: true
+          executor: "mediaTaskExecutor"
+          qualities:
+            - 240
+            - 360
+            - 720
+            - 1080
+          max_duration_seconds: 36000
+
+services:
+  - name: "STORAGE-SERVICE"
+    version: "1.x"
+    role: "primary"
+    endpoints:
+      - "/storage/files/upload-file"
+      - "/storage/files/upload-files"
+      - "/storage/files/{id}"
+      - "/storage/files/download/{file}"
+      - "/storage/files/web/{file}"
+      - "/storage/files/thumbnail/{file}"
+      - "/storage/files/stream-video/{file}"
+    events:
+      publishes: []
+      subscribes: []
+  - name: "USER-SERVICE"
+    version: "1.x"
+    role: "secondary"
+    endpoints:
+      - "/api/v1/users/{id}"
+
+integrations:
+  - type: "file"
+    target: "LOCAL-FILESYSTEM"
+    direction: "bidirectional"
+    authentication:
+      type: "none"
+    error_handling:
+      retry: false
+      fallback: "return_error"
+  - type: "api"
+    target: "AWS-S3"
+    direction: "bidirectional"
+    authentication:
+      type: "api_key"
+      config:
+        header: "AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY"
+    error_handling:
+      retry: true
+      max_retries: 3
+      fallback: "queue_for_sync"
+  - type: "api"
+    target: "AZURE-BLOB-STORAGE"
+    direction: "bidirectional"
+    authentication:
+      type: "api_key"
+      config:
+        header: "AZURE_STORAGE_CONNECTION_STRING"
+    error_handling:
+      retry: true
+      max_retries: 3
+      fallback: "queue_for_sync"
+
+business_rules:
+  - name: "mime_type_must_be_supported"
+    description: "Only allow uploads with a MIME type in the whitelist (audio, image, video, office, text)"
+    rule: "File.type IN [audio/*, image/*, video/*, application/pdf, application/msword, ...] => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "SupportedMimeTypeValidator"
+      message: "File type is not supported"
+  - name: "xxe_attack_prevention"
+    description: "Reject XML/SVG files containing <!ENTITY SYSTEM|PUBLIC declarations (XXE attack)"
+    rule: "File.content NOT CONTAINS XXE_DECLARATION => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "FileSecurityValidator"
+      message: "File contains malicious content and has been rejected"
+  - name: "image_size_limit"
+    description: "Image files must not exceed 20 MB"
+    rule: "File.type STARTS_WITH 'image/' AND File.size <= 20MB => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "FileSizeLimitValidator"
+      message: "Image must not exceed 20 MB"
+  - name: "video_size_limit"
+    description: "Video files must not exceed 100 MB"
+    rule: "File.type STARTS_WITH 'video/' AND File.size <= 100MB => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "FileSizeLimitValidator"
+      message: "Video must not exceed 100 MB"
+  - name: "audio_size_limit"
+    description: "Audio files must not exceed 5 MB"
+    rule: "File.type STARTS_WITH 'audio/' AND File.size <= 5MB => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "FileSizeLimitValidator"
+      message: "Audio must not exceed 5 MB"
+  - name: "office_size_limit"
+    description: "Office document files must not exceed 5 MB"
+    rule: "File.type IN OFFICE_MIME_TYPES AND File.size <= 5MB => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "FileSizeLimitValidator"
+      message: "Document must not exceed 5 MB"
+  - name: "video_duration_limit"
+    description: "Video duration must not exceed 10 hours (36000 seconds)"
+    rule: "File.type STARTS_WITH 'video/' AND video.duration <= 36000 => allow upload"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "VideoDurationValidator"
+      message: "Video must not be longer than 10 hours"
+  - name: "file_id_unique"
+    description: "File ID must be unique across the entire system"
+    rule: "File.id must be unique"
+    applies_to:
+      - "File"
+    enforcement_level: "hard"
+    validation:
+      validator: "UniqueFileIdValidator"
+      message: "File ID already exists"

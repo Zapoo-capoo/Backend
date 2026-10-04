@@ -1,10 +1,10 @@
 package com.capoo.chat.dto;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.util.Collections;
 import java.util.List;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @Builder

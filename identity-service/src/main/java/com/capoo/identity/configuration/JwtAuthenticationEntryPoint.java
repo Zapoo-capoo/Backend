@@ -1,16 +1,17 @@
 package com.capoo.identity.configuration;
 
-import com.capoo.identity.dto.ApiResponse;
-import com.capoo.identity.exception.ErrorCode;
+import java.io.IOException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
-import java.io.IOException;
+import com.capoo.dto.ApiResponse;
+import com.capoo.identity.exception.ErrorCode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override

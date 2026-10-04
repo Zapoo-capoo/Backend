@@ -38,6 +38,10 @@ application-*.yml
 !application.example.yml
 !application-*.example.yml
 
+# Real per-service config served by config-service (contains secrets).
+# Commit only the templates in environment-service/example/
+environment-service/local/
+
 # Virtual machine crash logs
 hs_err_pid*
 replay_pid*

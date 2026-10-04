@@ -1,11 +1,12 @@
 package com.capoo.chat.mapper;
 
+import java.util.List;
+
+import org.mapstruct.Mapper;
+
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
 import com.capoo.chat.entity.ChatMessage;
-import org.mapstruct.Mapper;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ChatMessageMapper {

@@ -1,8 +1,9 @@
 package com.capoo.chat.exception;
 
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+
+import lombok.Getter;
 
 @Getter
 public enum ErrorCode {
@@ -17,8 +18,13 @@ public enum ErrorCode {
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
     CONVERSATION_NOT_EXISTED(2001, "Conversation not existed", HttpStatus.NOT_FOUND),
     MESSAGE_NOT_FOUND(2002, "Message not found", HttpStatus.NOT_FOUND),
-    UNAUTHORIZED_ACTION(2003, "You are not allowed to perform this action", HttpStatus.FORBIDDEN)
-    ;
+    UNAUTHORIZED_ACTION(2003, "You are not allowed to perform this action", HttpStatus.FORBIDDEN),
+    INVALID_CURSOR(2004, "Invalid cursor", HttpStatus.BAD_REQUEST),
+    GROUP_NAME_REQUIRED(2005, "Group name is required", HttpStatus.BAD_REQUEST),
+    GROUP_NAME_TOO_LONG(2006, "Group name must be at most 100 characters", HttpStatus.BAD_REQUEST),
+    GROUP_MEMBERS_REQUIRED(2007, "A group needs at least 1 member besides you", HttpStatus.BAD_REQUEST),
+    PARTICIPANT_NOT_FOUND(2008, "Participant not found", HttpStatus.NOT_FOUND),
+    NOT_GROUP_CONVERSATION(2009, "This conversation is not a group", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.soctrip</groupId>
+    <artifactId>rael-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>rael-parent</name>
+    <description>Aggregator build for the Rael microservices</description>
+
+    <modules>
+        <module>common-lib</module>
+        <module>config-service</module>
+        <module>discovery-service</module>
+        <module>api-gateway</module>
+        <module>identity-service</module>
+        <module>notification-service</module>
+        <module>chat-service</module>
+        <module>profile-service</module>
+        <module>post-service</module>
+        <module>storage-service</module>
+    </modules>
+
+</project>

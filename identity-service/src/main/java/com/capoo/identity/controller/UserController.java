@@ -1,19 +1,22 @@
 package com.capoo.identity.controller;
 
-import com.capoo.identity.dto.ApiResponse;
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.capoo.dto.ApiResponse;
 import com.capoo.identity.dto.request.PasswordCreationRequest;
 import com.capoo.identity.dto.request.UserCreationRequest;
 import com.capoo.identity.dto.request.UserUpdateRequest;
 import com.capoo.identity.dto.response.UserResponse;
 import com.capoo.identity.service.UserService;
-import jakarta.validation.Valid;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -29,6 +32,7 @@ public class UserController {
                 .result(userService.createUser(request))
                 .build();
     }
+
     @GetMapping
     ApiResponse<List<UserResponse>> getUsers() {
         return ApiResponse.<List<UserResponse>>builder()
@@ -42,6 +46,7 @@ public class UserController {
                 .result(userService.getUser(userId))
                 .build();
     }
+
     @DeleteMapping("/{userId}")
     ApiResponse<String> deleteUser(@PathVariable String userId) {
         userService.deleteUser(userId);
@@ -54,12 +59,14 @@ public class UserController {
                 .result(userService.updateUser(userId, request))
                 .build();
     }
+
     @GetMapping("/my-info")
     ApiResponse<UserResponse> getMyInfo() {
         return ApiResponse.<UserResponse>builder()
                 .result(userService.getMyInfo())
                 .build();
     }
+
     @PostMapping("/create-password")
     ApiResponse<Void> createPassword(@RequestBody @Valid PasswordCreationRequest request) {
         userService.createPassword(request);
@@ -67,5 +74,4 @@ public class UserController {
                 .message("Password has been created, you could use it to log-in")
                 .build();
     }
-
 }

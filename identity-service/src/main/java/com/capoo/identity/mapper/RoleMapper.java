@@ -1,10 +1,11 @@
 package com.capoo.identity.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import com.capoo.identity.dto.request.RoleRequest;
 import com.capoo.identity.dto.response.RoleResponse;
 import com.capoo.identity.entity.Role;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface RoleMapper {

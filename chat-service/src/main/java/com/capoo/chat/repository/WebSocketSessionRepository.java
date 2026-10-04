@@ -1,13 +1,14 @@
 package com.capoo.chat.repository;
 
-import com.capoo.chat.entity.WebSocketSession;
+import java.util.List;
+
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.capoo.chat.entity.WebSocketSession;
 
 @Repository
-public interface WebSocketSessionRepository extends MongoRepository<WebSocketSession,String> {
+public interface WebSocketSessionRepository extends MongoRepository<WebSocketSession, String> {
 
     void deleteBySocketSessionId(String socketSessionId);
 

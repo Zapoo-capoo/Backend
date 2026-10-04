@@ -1,26 +1,21 @@
 package com.capoo.identity.configuration;
 
-import com.capoo.identity.dto.request.IntrospectRequest;
-import com.capoo.identity.service.AuthenticationService;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jwt.SignedJWT;
+import java.text.ParseException;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.spec.SecretKeySpec;
-import java.text.ParseException;
-import java.util.Objects;
+import com.capoo.identity.service.AuthenticationService;
+import com.nimbusds.jwt.SignedJWT;
 
 @Component
 public class CustomJwtDecoder implements JwtDecoder {
     @Value("${jwt.signerKey}")
     private String signerKey;
-
 
     private final AuthenticationService authenticationService;
 
@@ -34,13 +29,13 @@ public class CustomJwtDecoder implements JwtDecoder {
     public Jwt decode(String token) throws JwtException {
         try {
             SignedJWT signed = SignedJWT.parse(token);
-            return new Jwt( token,
+            return new Jwt(
+                    token,
                     signed.getJWTClaimsSet().getIssueTime().toInstant(),
                     signed.getJWTClaimsSet().getExpirationTime().toInstant(),
                     signed.getHeader().toJSONObject(),
-                    signed.getJWTClaimsSet().getClaims()
-            );
-        }catch (ParseException e){
+                    signed.getJWTClaimsSet().getClaims());
+        } catch (ParseException e) {
             throw new RuntimeException(e);
         }
     }

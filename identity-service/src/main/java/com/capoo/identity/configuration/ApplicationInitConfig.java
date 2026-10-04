@@ -1,21 +1,23 @@
 package com.capoo.identity.configuration;
 
-import com.capoo.identity.constant.PredefinedRole;
-import com.capoo.event.dto.UserProfileCreationRequest;
-import com.capoo.identity.entity.Role;
-import com.capoo.identity.entity.User;
-import com.capoo.identity.mapper.ProfileMapper;
-import com.capoo.identity.repository.RoleRepository;
-import com.capoo.identity.repository.UserRepository;
-import com.capoo.identity.repository.httpClient.profileClient.ProfileClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.HashSet;
+
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.HashSet;
+import com.capoo.event.dto.UserProfileCreationRequest;
+import com.capoo.identity.constant.PredefinedRole;
+import com.capoo.identity.entity.Role;
+import com.capoo.identity.entity.User;
+import com.capoo.identity.httpClient.profileClient.ProfileClient;
+import com.capoo.identity.mapper.ProfileMapper;
+import com.capoo.identity.repository.RoleRepository;
+import com.capoo.identity.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @RequiredArgsConstructor
@@ -47,13 +49,19 @@ public class ApplicationInitConfig {
                         .roles(roles)
                         .build();
                 userRepository.save(user);
-                //create profile for admin user
-                UserProfileCreationRequest userProfile= profileMapper.toUserProfileCreationRequest(user);
+
+                // create profile for admin user via Feign (best-effort, must not block startup)
+                UserProfileCreationRequest userProfile = profileMapper.toUserProfileCreationRequest(user);
                 userProfile.setUserId(user.getId());
                 userProfile.setFirstName("admin");
                 userProfile.setLastName("admin");
-                profileClient.createUserProfileForUser(userProfile);
-
+                try {
+                    profileClient.createUserProfileForUser(userProfile);
+                } catch (Exception ex) {
+                    log.warn(
+                            "Could not create profile for admin user (profile-service may be down): {}",
+                            ex.getMessage());
+                }
                 log.warn("admin user has been created with default password: admin, please change it");
             }
             log.info("Application initialization completed .....");

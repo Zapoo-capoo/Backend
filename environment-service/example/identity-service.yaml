@@ -1,0 +1,56 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /identity
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+logging:
+  level:
+    root: INFO
+    com.capoo: INFO
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/identity?serverTimezone=UTC
+    driverClassName: "com.mysql.cj.jdbc.Driver"
+    username: CHANGE_ME
+    password: CHANGE_ME
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  kafka:
+    bootstrap-servers: localhost:9094
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: identity-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+jwt:
+  signerKey: CHANGE_ME
+  valid-duration: 360000 # in second
+  refreshable-duration: 360000
+google:
+    client:
+        id: "CHANGE_ME.apps.googleusercontent.com"
+        secret: CHANGE_ME
+    redirectUri: "http://localhost:3000/authenticate"
+app:
+  services:
+    profile:
+      url: "http://localhost:8081/profile"
+

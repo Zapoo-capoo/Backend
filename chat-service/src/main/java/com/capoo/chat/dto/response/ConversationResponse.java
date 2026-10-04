@@ -1,11 +1,12 @@
 package com.capoo.chat.dto.response;
 
-import com.capoo.chat.entity.ParticipantInfo;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Instant;
 import java.util.List;
+
+import com.capoo.chat.entity.ParticipantInfo;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @Builder
@@ -18,6 +19,7 @@ public class ConversationResponse {
     String participantsHash;
     String conversationAvatar;
     String conversationName;
+    String createdBy;
     List<ParticipantInfo> participants;
     Instant createdDate;
     Instant modifiedDate;

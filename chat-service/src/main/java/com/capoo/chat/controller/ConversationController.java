@@ -1,17 +1,22 @@
 package com.capoo.chat.controller;
 
-import com.capoo.chat.dto.ApiResponse;
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.capoo.chat.dto.request.AddParticipantsRequest;
 import com.capoo.chat.dto.request.ConversationRequest;
+import com.capoo.chat.dto.request.GroupConversationRequest;
 import com.capoo.chat.dto.request.UpdateParticipantRequest;
 import com.capoo.chat.dto.response.ConversationResponse;
 import com.capoo.chat.service.ConversationService;
-import jakarta.validation.Valid;
+import com.capoo.dto.ApiResponse;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,6 +30,27 @@ public class ConversationController {
         return ApiResponse.<ConversationResponse>builder()
                 .result(conversationService.create(request))
                 .build();
+    }
+
+    @PostMapping("/group/create")
+    ApiResponse<ConversationResponse> createGroup(@RequestBody @Valid GroupConversationRequest request) {
+        return ApiResponse.<ConversationResponse>builder()
+                .result(conversationService.createGroup(request))
+                .build();
+    }
+
+    @PostMapping("/{conversationId}/participants/add")
+    ApiResponse<ConversationResponse> addParticipants(
+            @PathVariable("conversationId") String conversationId, @RequestBody @Valid AddParticipantsRequest request) {
+        return ApiResponse.<ConversationResponse>builder()
+                .result(conversationService.addParticipants(conversationId, request))
+                .build();
+    }
+
+    @PostMapping("/{conversationId}/seen")
+    ApiResponse<Boolean> markSeen(@PathVariable("conversationId") String conversationId) {
+        conversationService.markSeen(conversationId);
+        return ApiResponse.<Boolean>builder().result(true).build();
     }
 
     @GetMapping("/my-conversations")

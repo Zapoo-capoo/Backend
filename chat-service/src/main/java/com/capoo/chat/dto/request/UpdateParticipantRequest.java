@@ -16,4 +16,3 @@ public class UpdateParticipantRequest {
     String lastName;
     String avatar;
 }
-

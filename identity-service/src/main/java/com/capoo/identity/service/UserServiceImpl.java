@@ -1,0 +1,161 @@
+package com.capoo.identity.service;
+
+import java.util.HashSet;
+import java.util.List;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.capoo.event.dto.NotificationEvent;
+import com.capoo.event.dto.UserProfileCreationRequest;
+import com.capoo.identity.constant.PredefinedRole;
+import com.capoo.identity.dto.request.PasswordCreationRequest;
+import com.capoo.identity.dto.request.UpdateProfileRequest;
+import com.capoo.identity.dto.request.UserCreationRequest;
+import com.capoo.identity.dto.request.UserUpdateRequest;
+import com.capoo.identity.dto.response.UserResponse;
+import com.capoo.identity.entity.Role;
+import com.capoo.identity.entity.User;
+import com.capoo.identity.exception.AppException;
+import com.capoo.identity.exception.ErrorCode;
+import com.capoo.identity.httpClient.profileClient.ProfileClient;
+import com.capoo.identity.mapper.ProfileMapper;
+import com.capoo.identity.mapper.UserMapper;
+import com.capoo.identity.repository.RoleRepository;
+import com.capoo.identity.repository.UserRepository;
+
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
+public class UserServiceImpl implements UserService {
+    PasswordEncoder passwordEncoder;
+    UserRepository userRepository;
+    RoleRepository roleRepository;
+    UserMapper userMapper;
+    ProfileClient profileClient;
+    ProfileMapper profileMapper;
+    KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Override
+    @Transactional
+    public UserResponse createUser(UserCreationRequest userCreationRequest) {
+        // Check if user already exists
+        if (userRepository.existsByUsername(userCreationRequest.getUsername()))
+            throw new AppException(ErrorCode.USER_EXISTED);
+        if (userRepository.existsByEmail(userCreationRequest.getEmail()))
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
+        User user = userMapper.toUser(userCreationRequest);
+        // Create user
+        user.setPassword(passwordEncoder.encode(userCreationRequest.getPassword()));
+        HashSet<Role> roles = new HashSet<>();
+        roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
+        user.setRoles(roles);
+        user = userRepository.save(user);
+        // Create profile for user synchronously via Feign
+        UserProfileCreationRequest userProfile = profileMapper.toUserProfileCreationRequest(userCreationRequest);
+        userProfile.setUserId(user.getId());
+        try {
+            profileClient.createUserProfileForUser(userProfile);
+        } catch (Exception ex) {
+            // Roll back the created user so we don't leave an account without a profile
+            log.error("Failed to create profile for user {}, rolling back", user.getId(), ex);
+            userRepository.deleteById(user.getId());
+            throw new AppException(ErrorCode.PROFILE_CREATION_FAILED);
+        }
+        // Send welcome notification (still asynchronous via Kafka to notification-service)
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .channel("EMAIL")
+                .recipient(userCreationRequest.getEmail())
+                .subject("wellcome")
+                .body("wellcome" + userCreationRequest.getUsername())
+                .build();
+        kafkaTemplate.send("onboard_successful456", notificationEvent).whenComplete((result, ex) -> {
+            if (ex == null) {
+                log.info("Sent message to topic: {}", result.getRecordMetadata().topic());
+            } else {
+                log.error("Failed to send message", ex);
+            }
+        });
+        return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse updateUser(String userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        userMapper.updateUser(user, request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        var roles = roleRepository.findAllById(request.getRoles());
+        user.setRoles(new HashSet<>(roles));
+
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    //   @PreAuthorize("hasRole('ADMIN')")
+    @Override
+    public void deleteUser(String userId) {
+        userRepository.deleteById(userId);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserResponse> getUsers() {
+        log.info("In method get Users");
+        return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse getUser(String id) {
+        return userMapper.toUserResponse(
+                userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
+    }
+
+    @Override
+    public UserResponse getMyInfo() {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+        User user = userRepository.findById(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        var userResponse = userMapper.toUserResponse(user);
+        userResponse.setNoPassword(!StringUtils.hasText(user.getPassword()));
+        return userResponse;
+    }
+
+    @Override
+    public void createPassword(PasswordCreationRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+
+        User user = userRepository.findById(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (StringUtils.hasText(user.getPassword())) throw new AppException(ErrorCode.PASSWORD_EXISTED);
+        if (userRepository.existsByUsername(request.getUsername())) throw new AppException(ErrorCode.USER_EXISTED);
+
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setUsername(request.getUsername());
+        userRepository.save(user);
+
+        // notify profile service to update username on profile
+        UpdateProfileRequest updateProfileRequest =
+                UpdateProfileRequest.builder().username(request.getUsername()).build();
+        try {
+            profileClient.updateMyProfile(updateProfileRequest);
+        } catch (Exception ex) {
+            log.warn("Failed to notify profile service about username update: {}", ex.getMessage());
+        }
+    }
+}

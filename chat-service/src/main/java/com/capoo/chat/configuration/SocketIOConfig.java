@@ -1,12 +1,11 @@
 package com.capoo.chat.configuration;
 
-import com.corundumstudio.socketio.SocketIOServer;
-import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.corundumstudio.socketio.SocketIOServer;
+import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Configuration
 public class SocketIOConfig {
@@ -16,9 +15,7 @@ public class SocketIOConfig {
         config.setPort(8099);
         config.setOrigin("*");
 
-        config.setJsonSupport(
-                new JacksonJsonSupport(new JavaTimeModule())
-        );
+        config.setJsonSupport(new JacksonJsonSupport(new JavaTimeModule()));
         return new SocketIOServer(config);
     }
 }

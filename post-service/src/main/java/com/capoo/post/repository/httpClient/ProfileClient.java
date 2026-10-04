@@ -1,7 +1,7 @@
 package com.capoo.post.repository.httpClient;
 
 import com.capoo.post.configuration.AuthenticationRequestInterceptor;
-import com.capoo.post.dto.ApiResponse;
+import com.capoo.dto.ApiResponse;
 import com.capoo.post.dto.response.UserProfileReponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

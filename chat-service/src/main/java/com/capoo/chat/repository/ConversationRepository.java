@@ -1,13 +1,14 @@
 package com.capoo.chat.repository;
 
-import com.capoo.chat.entity.Conversation;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
-
 import java.util.List;
 import java.util.Optional;
 
-public interface ConversationRepository extends MongoRepository<Conversation, String> {
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+
+import com.capoo.chat.entity.Conversation;
+
+public interface ConversationRepository extends MongoRepository<Conversation, String>, ConversationRepositoryCustom {
     Optional<Conversation> findByParticipantsHash(String hash);
 
     @Query("{'participants.userId' : ?0}")

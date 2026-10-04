@@ -1,6 +1,5 @@
 package com.capoo.profile.exception;
 
-
 public class AppException extends RuntimeException {
 
     public AppException(ErrorCode errorCode) {

@@ -2,12 +2,12 @@ package com.capoo.identity.controller;
 
 import java.util.List;
 
-import com.capoo.identity.dto.ApiResponse;
+import org.springframework.web.bind.annotation.*;
+
+import com.capoo.dto.ApiResponse;
 import com.capoo.identity.dto.request.RoleRequest;
 import com.capoo.identity.dto.response.RoleResponse;
 import com.capoo.identity.service.RoleService;
-import org.springframework.web.bind.annotation.*;
-
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

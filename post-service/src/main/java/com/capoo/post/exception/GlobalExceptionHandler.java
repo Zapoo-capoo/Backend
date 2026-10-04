@@ -1,6 +1,6 @@
 package com.capoo.post.exception;
 
-import com.capoo.post.dto.ApiResponse;
+import com.capoo.dto.ApiResponse;
 import jakarta.validation.ConstraintViolation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

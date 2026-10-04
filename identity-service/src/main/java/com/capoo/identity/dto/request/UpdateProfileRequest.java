@@ -1,9 +1,9 @@
 package com.capoo.identity.dto.request;
 
+import java.time.LocalDate;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -17,4 +17,3 @@ public class UpdateProfileRequest {
     LocalDate dob;
     String city;
 }
-

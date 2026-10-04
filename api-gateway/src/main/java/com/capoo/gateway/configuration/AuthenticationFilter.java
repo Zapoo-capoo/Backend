@@ -36,8 +36,18 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     String[] publicEndpoints=new String[]{
             "/identity/auth/.*","/identity/users/registration",
             "/notification/.*",
-            "/file/media/download/.*"
+            "/file/media/download/.*",
+            "/identity/v3/api-docs.*",
+            "/profile/v3/api-docs.*",
+            "/chat/v3/api-docs.*",
+            "/storage-service/v3/api-docs.*",
+            "/storage-service/files/(web|thumbnail|download|stream-video)/.*"
 
+    };
+    // Gateway's own swagger-ui assets (served without the api-prefix)
+    @NonFinal
+    String[] openEndpoints=new String[]{
+            "/swagger-ui.html","/swagger-ui/.*","/v3/api-docs.*","/webjars/.*"
     };
     @Value("${app.api-prefix}")
     @NonFinal
@@ -58,22 +68,29 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unAuthenticatedResponse(exchange.getResponse());
         }
         String token=authHeader.getFirst().substring("Bearer ".length());
-        // Verify token
-        return  identityService.introspectToken(token).flatMap(
-                introspectResponseApiResponse -> {
-                    if (introspectResponseApiResponse.getResult().isValid())
-                        return chain.filter(exchange);
-                    else
-                        return unAuthenticatedResponse(exchange.getResponse());
-                }).onErrorResume(throwable -> unAuthenticatedResponse(exchange.getResponse()));
+        // Verify token: only the introspection result decides auth.
+        // onErrorReturn(false) is placed BEFORE routing so a failing introspection
+        // maps to 401, while errors from routing to a (possibly down) downstream
+        // service are NOT masked as 401 — they propagate as their real status (e.g. 503).
+        return identityService.introspectToken(token)
+                .map(introspectResponseApiResponse ->
+                        introspectResponseApiResponse.getResult().isValid())
+                .onErrorReturn(false)
+                .flatMap(valid -> valid
+                        ? chain.filter(exchange)
+                        : unAuthenticatedResponse(exchange.getResponse()));
     }
     @Override
     public int getOrder() {
         return -1;
     }
     private boolean isPublicEndpoint(ServerHttpRequest request) {
-        return Arrays.stream(publicEndpoints)
-                .anyMatch(s->request.getURI().getPath().matches(apiPrefix+s));
+        String path = request.getURI().getPath();
+        boolean prefixed = Arrays.stream(publicEndpoints)
+                .anyMatch(s -> path.matches(apiPrefix + s));
+        boolean open = Arrays.stream(openEndpoints)
+                .anyMatch(path::matches);
+        return prefixed || open;
     }
 
     Mono<Void> unAuthenticatedResponse(ServerHttpResponse response) {

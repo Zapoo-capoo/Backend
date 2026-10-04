@@ -1,0 +1,90 @@
+server:
+  port: 7881
+  servlet:
+    context-path: /storage-service
+  tomcat:
+    max-swallow-size: 10GB
+    max-http-form-post-size: 10GB
+    max-http-header-size: 65536
+
+
+signature:
+  md5:
+    secret-key: CHANGE_ME
+
+logging:
+  level:
+    org:
+      springframework:
+        web: ERROR
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  task:
+    scheduling:
+      pool:
+        size: 2
+  mvc:
+    async:
+      request-timeout: 3600000
+  servlet:
+    multipart:
+      file-size-threshold: 10KB
+      enabled: true
+      max-file-size: 10GB
+      max-request-size: 10GB
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/storage
+    username: CHANGE_ME
+    password: CHANGE_ME
+    hikari:
+      pool-name: storage-service-pool
+      maximum-pool-size: 5
+      max-lifetime: 1800000
+      idle-timeout: 300000
+      connection-timeout: 30000
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: update
+storage:
+  datastore:
+    mode: postgres
+  prefix: common
+  hls-enabled: false
+  object:
+    mode: s3
+    base-prefix: "common"
+    read-fallback-local-enabled: true
+    s3:
+      bucket: your-bucket-name
+      region: ap-southeast-1
+      path-style-access-enabled: false
+      credentials:
+        mode: static                      # static = dùng key dưới đây
+        access-key: CHANGE_ME
+        secret-key: CHANGE_ME
+    local:
+      root: ./home/media
+  video:
+    qualities: 240, 360, 720, 1080
+    duration: 36000
+
+limit-size-in-mb:
+  video: 100
+  image: 20
+  office: 5
+  audio: 5
+
+cdn-info:
+  invalidating: false
+
+media:
+  # Đường dẫn ffmpeg. Để "ffmpeg" nếu đã có trong PATH, hoặc trỏ full path.
+  ffmpeg-path: C:/ffmpeg/bin/ffmpeg.exe
+
+app:
+  gateway:
+    domain-name: http://localhost:8888/api/v1

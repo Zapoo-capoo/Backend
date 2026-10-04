@@ -1,6 +1,7 @@
 package com.capoo.identity.dto.request;
 
 import jakarta.validation.constraints.Size;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PasswordCreationRequest {
     String username;
+
     @Size(min = 6, message = "INVALID_PASSWORD")
     String password;
 }

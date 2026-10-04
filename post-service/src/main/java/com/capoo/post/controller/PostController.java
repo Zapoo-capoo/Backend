@@ -1,6 +1,6 @@
 package com.capoo.post.controller;
 
-import com.capoo.post.dto.ApiResponse;
+import com.capoo.dto.ApiResponse;
 import com.capoo.post.dto.PageResponse;
 import com.capoo.post.dto.request.PostRequest;
 import com.capoo.post.dto.response.PostResponse;

@@ -1,13 +1,13 @@
 package com.capoo.chat.entity;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import java.time.Instant;
+
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.Instant;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Setter
 @Getter
@@ -23,11 +23,11 @@ public class ChatMessage {
     @Indexed
     String conversationId;
 
+    @Indexed
+    Instant createdDate;
+
     String message;
     String imgUrl;
 
-    String avatar;
     ParticipantInfo sender;
-    @Indexed
-    Instant createdDate;
 }
