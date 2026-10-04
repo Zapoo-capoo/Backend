@@ -48,10 +48,11 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-identity}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    # Small buffer pool and no performance schema keep MySQL around 300 MB instead of its large defaults
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--innodb-buffer-pool-size=128M", "--performance-schema=OFF"]
     volumes:
       - mysql_data:/var/lib/mysql
-    mem_limit: 640m
+    mem_limit: 512m
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
@@ -69,7 +70,7 @@ services:
     command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     volumes:
       - mongo_data:/data/db
-    mem_limit: 640m
+    mem_limit: 512m
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet -u $${MONGO_INITDB_ROOT_USERNAME} -p $${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
       interval: 10s
@@ -99,14 +100,15 @@ services:
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
-      NEO4J_server_memory_heap_initial__size: 256m
-      NEO4J_server_memory_heap_max__size: 512m
-      NEO4J_server_memory_pagecache_size: 128m
+      NEO4J_server_memory_heap_initial__size: 128m
+      NEO4J_server_memory_heap_max__size: 384m
+      NEO4J_server_memory_pagecache_size: 64m
     volumes:
       - neo4j_data:/data
-    mem_limit: 1g
+    mem_limit: 768m
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p $${NEO4J_PASSWORD} 'RETURN 1' > /dev/null 2>&1 || exit 1"]
+      # The container only knows NEO4J_AUTH (neo4j/<password>), take the password from it
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' > /dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 20

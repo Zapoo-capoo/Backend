@@ -19,12 +19,21 @@ Internet ──8099──▶ chat-service (Socket.IO)
 ## 1. Chuẩn bị EC2 (làm một lần)
 
 **Máy chủ**
-- Ubuntu 22.04 hoặc 24.04, loại **t3.xlarge (16 GB RAM)** là thoải mái; **t3.large (8 GB)** chạy được nếu thêm swap
-  (bước dưới). Ổ đĩa **gp3 40 GB** trở lên (video và dữ liệu CSDL tăng dần).
+- Ubuntu 22.04 hoặc 24.04, loại **t3.large (8 GB RAM)** là mức rẻ nhất phù hợp (hoặc **t3a.large**, chip AMD, rẻ hơn
+  khoảng 10 %). Cả hệ thống (7 service Java + MySQL, PostgreSQL, MongoDB, Redis, Neo4j, Kafka) dùng thật khoảng
+  **5 GB**, nên **bắt buộc thêm swap 4 GB** (bước dưới) để chịu được lúc khởi động. **Không dùng t3.medium (4 GB)**: không
+  đủ chỗ. Dư dả hơn thì chọn t3.xlarge (16 GB). Ổ đĩa **gp3 30 đến 40 GB** (video và dữ liệu CSDL tăng dần).
+- Muốn rẻ hơn nữa: Reserved Instance hoặc Savings Plan 1 năm (giảm khoảng 30 %), hoặc **Amazon Lightsail 8 GB** (giá cố
+  định khoảng 40 USD/tháng, đã gồm IP tĩnh và băng thông). Workflow này vẫn dùng được với Lightsail vì chỉ cần SSH.
 - Gắn **Elastic IP** (địa chỉ IP cố định). `PUBLIC_BASE_URL` và đường dẫn ảnh/video trả về cho client dùng IP này, IP đổi
   là link cũ hỏng.
-- **Security Group** (inbound): `22` chỉ từ IP của bạn; `8888` (API) và `8099` (Socket.IO) từ nơi cần truy cập. Không mở
+- **Security Group** (inbound): `8888` (API) và `8099` (Socket.IO) từ nơi cần truy cập, và cổng `22` (SSH). Không mở
   cổng nào khác (CSDL, Kafka... chỉ nằm trong mạng nội bộ).
+  - **Cổng 22 phải mở cho `0.0.0.0/0`** nếu dùng workflow này: GitHub Actions chạy trên máy có IP thay đổi liên tục, nên
+    không thể khóa theo IP. Chấp nhận được vì Ubuntu trên AWS **chỉ cho đăng nhập bằng khóa SSH** (không có mật khẩu), hãy
+    giữ nguyên như vậy và cài `fail2ban` để chặn dò khóa: `sudo apt-get install -y fail2ban`.
+  - Muốn đóng hẳn cổng 22: dùng AWS Systems Manager (SSM) thay SSH, hoặc cài runner tự host trên chính EC2. Cả hai cần sửa
+    workflow, để sau.
 
 **IAM Role cho S3 (khuyên dùng, khỏi để khóa AWS trên máy chủ)**
 1. IAM → Roles → Create role → AWS service → **EC2**, gắn policy cho bucket (đổi tên bucket):
@@ -41,7 +50,7 @@ Internet ──8099──▶ chat-service (Socket.IO)
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER && newgrp docker
 
-# Swap 4 GB (bắt buộc nếu chỉ có 8 GB RAM)
+# Swap 4 GB (bắt buộc với máy 8 GB RAM)
 sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
