@@ -1,20 +1,24 @@
 package com.capoo.chat.repository.httpclient;
 
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @FeignClient(name = "storage-service", url = "${app.services.storage.url:http://localhost:7881/storage-service}")
 public interface StorageClient {
 
-    @PostMapping(value = "/internal/files/upload-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    Response<StoredFile> upload(@RequestPart("file") MultipartFile file);
+    /**
+     * Info about a file that a client uploaded to storage-service. Storage answers HTTP 200 even when the file does not
+     * exist, the outcome is in {@link Response#success()}.
+     */
+    @GetMapping("/internal/files/{id}")
+    Response<StoredFile> getFile(@PathVariable("id") String id);
 
     record Response<T>(Boolean success, T data, Object error) {}
 
-    record StoredFile(String id, String extension, @JsonProperty("original_name") String originalName) {}
+    /** {@code type} is the MIME type (like image/png or video/mp4), {@code extension} includes the dot. */
+    record StoredFile(
+            String id, String extension, @JsonProperty("original_name") String originalName, String type, Long size) {}
 }

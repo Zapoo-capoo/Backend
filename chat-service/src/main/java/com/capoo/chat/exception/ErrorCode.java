@@ -24,7 +24,11 @@ public enum ErrorCode {
     GROUP_NAME_TOO_LONG(2006, "Group name must be at most 100 characters", HttpStatus.BAD_REQUEST),
     GROUP_MEMBERS_REQUIRED(2007, "A group needs at least 1 member besides you", HttpStatus.BAD_REQUEST),
     PARTICIPANT_NOT_FOUND(2008, "Participant not found", HttpStatus.NOT_FOUND),
-    NOT_GROUP_CONVERSATION(2009, "This conversation is not a group", HttpStatus.BAD_REQUEST);
+    NOT_GROUP_CONVERSATION(2009, "This conversation is not a group", HttpStatus.BAD_REQUEST),
+    TOO_MANY_ATTACHMENTS(2010, "A message can have at most 5 attachments", HttpStatus.BAD_REQUEST),
+    MESSAGE_EMPTY(2011, "A message needs some text or at least one attachment", HttpStatus.BAD_REQUEST),
+    ATTACHMENT_NOT_FOUND(2012, "Attachment file not found", HttpStatus.BAD_REQUEST),
+    UNSUPPORTED_ATTACHMENT_TYPE(2013, "Only images and videos can be attached", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

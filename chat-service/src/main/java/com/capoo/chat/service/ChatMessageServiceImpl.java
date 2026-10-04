@@ -14,13 +14,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.capoo.chat.dto.CursorResponse;
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
-import com.capoo.chat.dto.response.FileReponse;
 import com.capoo.chat.dto.response.UserProfileResponse;
+import com.capoo.chat.entity.Attachment;
 import com.capoo.chat.entity.ChatMessage;
 import com.capoo.chat.entity.Conversation;
 import com.capoo.chat.entity.ParticipantInfo;
@@ -31,7 +30,6 @@ import com.capoo.chat.mapper.ChatMessageMapper;
 import com.capoo.chat.repository.ChatMessageRepository;
 import com.capoo.chat.repository.ConversationRepository;
 import com.capoo.chat.repository.WebSocketSessionRepository;
-import com.capoo.chat.repository.httpclient.FileClient;
 import com.capoo.chat.repository.httpclient.ProfileClient;
 import com.capoo.chat.service.cache.ChatCacheKeys;
 import com.capoo.chat.service.cache.ICacheService;
@@ -64,7 +62,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     ObjectMapper objectMapper;
     ChatMessageMapper chatMessageMapper;
     ConversationRepository conversationRepository;
-    FileClient fileClient;
+    AttachmentResolver attachmentResolver;
     ICacheService cacheService;
 
     /**
@@ -101,7 +99,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     }
 
     @Override
-    public ChatMessageResponse create(ChatMessageRequest request, MultipartFile file) {
+    public ChatMessageResponse create(ChatMessageRequest request) {
         // validate conversationId
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Conversation conversation = conversationRepository
@@ -112,6 +110,11 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .filter(participant -> participant.getUserId().equals(userId))
                 .findAny()
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_EXISTED));
+        // Everything about the attachments is checked before anything is saved or sent
+        List<Attachment> attachments = attachmentResolver.resolve(request.getFileIds());
+        if ((request.getMessage() == null || request.getMessage().isBlank()) && attachments.isEmpty()) {
+            throw new AppException(ErrorCode.MESSAGE_EMPTY);
+        }
         // GetUserInfoUs
         var userProfileResponse = profileClient.getProfile(userId);
         if (Objects.isNull(userProfileResponse)) {
@@ -129,11 +132,12 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .build());
         // MongoDB keeps millisecond precision, the cache score and the cursor are millisecond based as well
         chatMessage.setCreatedDate(Instant.now().truncatedTo(ChronoUnit.MILLIS));
-        FileReponse response = null;
-        if (file != null && !file.isEmpty()) {
-            response = fileClient.uploadMedia(file).getResult();
-            chatMessage.setImgUrl(response.getUrl());
-        }
+        chatMessage.setAttachments(attachments);
+        // Older clients only know imgUrl: the first image of the message
+        attachments.stream()
+                .filter(attachment -> Attachment.IMAGE.equals(attachment.getType()))
+                .findFirst()
+                .ifPresent(attachment -> chatMessage.setImgUrl(attachment.getUrl()));
         // CreateChatMessage
         chatMessageRepository.save(chatMessage);
         // Everybody but the sender now has an unseen message in this conversation

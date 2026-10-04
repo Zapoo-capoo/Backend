@@ -1,14 +1,12 @@
 package com.capoo.chat.controller;
 
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.capoo.chat.dto.CursorResponse;
 import com.capoo.chat.dto.request.ChatMessageRequest;
 import com.capoo.chat.dto.response.ChatMessageResponse;
 import com.capoo.chat.service.ChatMessageService;
 import com.capoo.dto.ApiResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +20,9 @@ public class ChatMessageController {
     ChatMessageService chatMessageService;
 
     @PostMapping("/create")
-    ApiResponse<ChatMessageResponse> create(
-            @ModelAttribute ChatMessageRequest request,
-            @RequestParam(value = "file", required = false) MultipartFile file)
-            throws JsonProcessingException {
+    ApiResponse<ChatMessageResponse> create(@ModelAttribute ChatMessageRequest request) {
         return ApiResponse.<ChatMessageResponse>builder()
-                .result(chatMessageService.create(request, file))
+                .result(chatMessageService.create(request))
                 .build();
     }
 
