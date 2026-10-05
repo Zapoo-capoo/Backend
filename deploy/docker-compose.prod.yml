@@ -167,10 +167,12 @@ services:
   embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
     restart: unless-stopped
-    command: --model-id intfloat/multilingual-e5-small
+    # The model warms up with a batch of --max-batch-tokens tokens, the default (16384) needs more memory than this
+    # container may have: it was killed there, again and again. Posts are short, a small batch is plenty
+    command: --model-id intfloat/multilingual-e5-small --max-batch-tokens 2048
     volumes:
       - embedding_data:/data
-    mem_limit: 900m
+    mem_limit: 1536m
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/80'"]
       interval: 10s

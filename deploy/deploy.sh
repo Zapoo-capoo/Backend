@@ -64,6 +64,12 @@ echo "==> $(date -u +%H:%M:%S) Deploying image tag: $TAG (previous: ${PREVIOUS_T
 
 export IMAGE_TAG="$TAG"
 
+# Make room first: the images of old deployments pile up (storage-service alone is huge), and a failed deployment never
+# reaches the cleanup at the end. Images used by a container (the running version, which a rollback needs) are kept.
+echo "==> $(date -u +%H:%M:%S) Disk before cleanup: $(df -h / | awk 'NR==2 {print $4 " free of " $2}')"
+docker image prune -af > /dev/null || true
+echo "==> $(date -u +%H:%M:%S) Disk after cleanup: $(df -h / | awk 'NR==2 {print $4 " free of " $2}')"
+
 echo "==> $(date -u +%H:%M:%S) Pulling images"
 compose pull --quiet "${JAVA_SERVICES[@]}"
 echo "==> $(date -u +%H:%M:%S) Images pulled"
@@ -84,7 +90,7 @@ echo "!! $TAG did not become healthy" >&2
 compose ps >&2 || true
 echo "----- machine load: $(uptime)" >&2
 free -h >&2 || true
-for service in "${JAVA_SERVICES[@]}"; do
+for service in solr embedding "${JAVA_SERVICES[@]}"; do
   echo "----- last logs of $service" >&2
   compose logs --no-color --tail 40 "$service" >&2 || true
 done
