@@ -1,0 +1,51 @@
+# Production config of post-service, served by config-service from /config (see deploy/docker-compose.prod.yml).
+# No secrets here: every ${NAME} is read from the environment (deploy/.env on the server).
+server:
+  port: 8083
+  servlet:
+    context-path: /post
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+spring:
+  application:
+    name: post-service
+  data:
+    mongodb:
+      # MONGO_USER / MONGO_PASSWORD must not contain characters that need URL-encoding (@ : / ? # %)
+      uri: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST:mongo}:27017/post-service?authSource=admin
+      auto-index-creation: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: post-search-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+app:
+  kafka:
+    topics:
+      post-search: post.search.index
+  services:
+    identity: http://identity-service:8080/identity
+    profile: http://profile-service:8081/profile
+    storage:
+      url: http://storage-service:7881/storage-service
+  search:
+    solr-url: http://solr:8983/solr/posts
+    embedding-url: http://embedding:80
+    vector-dimensions: 384
