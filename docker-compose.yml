@@ -108,7 +108,7 @@ services:
     volumes:
       - solr_data:/var/solr
   # Turns text into vectors for the semantic search of the posts. HuggingFace Text Embeddings Inference serving a
-  # multilingual model (it understands Vietnamese), 384 dimensions. The first start downloads the model (~470MB)
+  # multilingual mod el (it understands Vietnamese), 384 dimensions. The first start downloads the model (~470MB)
   embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
     container_name: embedding
