@@ -1,0 +1,38 @@
+server:
+  port: ${NOTIFICATION_SERVICE_PORT:8082}
+  servlet:
+    context-path: /notification
+
+brevo:
+  api-key: ${BREVO_API_KEY:replace-with-brevo-api-key}
+
+spring:
+  application:
+    name: notification-service
+  data:
+    mongodb:
+      uri: ${NOTIFICATION_MONGODB_URI:mongodb://root:root@localhost:27017/notification-service?authSource=admin}
+      # Creates the indexes declared on Notification (unique dedup key, 90 days TTL)
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:changeme}
+      timeout: ${REDIS_TIMEOUT:60000}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: ${NOTIFICATION_KAFKA_GROUP_ID:notification-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+app:
+  kafka:
+    topics:
+      notification-events: ${NOTIFICATION_EVENTS_TOPIC:notification.events}
+  services:
+    identity: ${IDENTITY_SERVICE_BASE_URL:http://localhost:8080/identity}
+    profile: ${PROFILE_SERVICE_BASE_URL:http://localhost:8081/profile}

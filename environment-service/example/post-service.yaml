@@ -1,0 +1,41 @@
+server:
+  port: ${POST_SERVICE_PORT:8083}
+  servlet:
+    context-path: /post
+
+spring:
+  application:
+    name: post-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: post-search-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+  data:
+    mongodb:
+      uri: ${POST_MONGODB_URI:mongodb://root:root@localhost:27017/post-service?authSource=admin}
+
+app:
+  kafka:
+    topics:
+      post-search: post.search.index
+  services:
+    identity: ${IDENTITY_SERVICE_BASE_URL:http://localhost:8080/identity}
+    profile: ${PROFILE_SERVICE_BASE_URL:http://localhost:8081/profile}
+  search:
+    solr-url: ${SOLR_POSTS_URL:http://localhost:8983/solr/posts}
+    embedding-url: ${EMBEDDING_SERVICE_URL:http://localhost:8089}
+    # Must match the model of the embedding service (multilingual-e5-small = 384)
+    vector-dimensions: 384
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka}
