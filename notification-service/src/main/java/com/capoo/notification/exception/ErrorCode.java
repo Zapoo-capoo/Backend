@@ -16,7 +16,9 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
-    CANNOT_SEND_EMAIL(1009, "Cannot send email", HttpStatus.INTERNAL_SERVER_ERROR);
+    CANNOT_SEND_EMAIL(1009, "Cannot send email", HttpStatus.INTERNAL_SERVER_ERROR),
+    NOTIFICATION_NOT_FOUND(1010, "Notification not found", HttpStatus.NOT_FOUND),
+    INVALID_CURSOR(1011, "Invalid cursor", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

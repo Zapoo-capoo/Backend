@@ -79,3 +79,7 @@ springdoc:
         url: ${app.api-prefix}/chat/v3/api-docs
       - name: storage-service
         url: ${app.api-prefix}/storage-service/v3/api-docs
+      - name: notification-service
+        url: ${app.api-prefix}/notification/v3/api-docs
+      - name: post-service
+        url: ${app.api-prefix}/post/v3/api-docs

@@ -40,6 +40,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/identity/v3/api-docs.*",
             "/profile/v3/api-docs.*",
             "/chat/v3/api-docs.*",
+            "/post/v3/api-docs.*",
             "/storage-service/v3/api-docs.*",
             "/storage-service/files/(web|thumbnail|download|stream-video)/.*"
 

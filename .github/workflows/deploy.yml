@@ -66,6 +66,8 @@ jobs:
           - { module: identity-service, java: "21", jdk: "21", ffmpeg: "false" }
           - { module: profile-service, java: "21", jdk: "21", ffmpeg: "false" }
           - { module: chat-service, java: "21", jdk: "21", ffmpeg: "false" }
+          - { module: notification-service, java: "21", jdk: "21", ffmpeg: "false" }
+          - { module: post-service, java: "21", jdk: "21", ffmpeg: "false" }
           - { module: api-gateway, java: "21", jdk: "21", ffmpeg: "false" }
     steps:
       - uses: actions/checkout@v4

@@ -42,6 +42,9 @@ spring:
       max-request-size: 50MB
 
 app:
+  kafka:
+    topics:
+      notification-events: notification.events
   services:
     storage:
       url: http://storage-service:7881/storage-service
