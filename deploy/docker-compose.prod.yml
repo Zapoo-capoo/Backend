@@ -144,6 +144,41 @@ services:
       start_period: 30s
     logging: *logging
 
+  # Search engine of the posts. Standalone, one core "posts"; post-service creates its fields on first use
+  solr:
+    image: solr:9.8
+    restart: unless-stopped
+    command: solr-precreate posts
+    environment:
+      SOLR_HEAP: 384m
+    volumes:
+      - solr_data:/var/solr
+    mem_limit: 640m
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8983'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    logging: *logging
+
+  # Turns text into vectors for the semantic search of the posts (HuggingFace Text Embeddings Inference, CPU).
+  # The first start downloads the model (~470MB) into the volume, the later ones reuse it
+  embedding:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    restart: unless-stopped
+    command: --model-id intfloat/multilingual-e5-small
+    volumes:
+      - embedding_data:/data
+    mem_limit: 900m
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/80'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+    logging: *logging
+
   # ------------------------------------------------------------------ platform services
   discovery-service:
     <<: *java-service
@@ -311,6 +346,28 @@ services:
       retries: 40
       start_period: 60s
 
+  post-service:
+    <<: *java-service
+    image: ${REGISTRY:-ghcr.io/zapoo-capoo/backend}/post-service:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args: { MODULE: post-service, JAVA_VERSION: "21" }
+    depends_on:
+      config-service: { condition: service_healthy }
+      discovery-service: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      solr: { condition: service_healthy }
+      embedding: { condition: service_healthy }
+    mem_limit: 450m
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8083'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
   api-gateway:
     <<: *java-service
     image: ${REGISTRY:-ghcr.io/zapoo-capoo/backend}/api-gateway:${IMAGE_TAG:-latest}
@@ -326,6 +383,7 @@ services:
       chat-service: { condition: service_healthy }
       storage-service: { condition: service_healthy }
       notification-service: { condition: service_healthy }
+      post-service: { condition: service_healthy }
     ports:
       - "8888:8888"
     mem_limit: 512m
@@ -343,4 +401,6 @@ volumes:
   redis_data:
   neo4j_data:
   kafka_data:
+  solr_data:
+  embedding_data:
   storage_data:

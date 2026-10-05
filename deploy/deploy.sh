@@ -16,7 +16,7 @@ TAG="${1:?usage: ./deploy.sh <image-tag>}"
 STATE_FILE=".deployed_tag"
 STATUS_FILE=".deploy_status"
 STAGE_WAIT_SECONDS="${STAGE_WAIT_SECONDS:-420}"
-JAVA_SERVICES=(discovery-service config-service identity-service profile-service chat-service storage-service notification-service api-gateway)
+JAVA_SERVICES=(discovery-service config-service identity-service profile-service chat-service storage-service notification-service post-service api-gateway)
 
 compose() {
   docker compose --env-file .env -f docker-compose.prod.yml "$@"
@@ -29,11 +29,12 @@ compose() {
 STAGES=(
   "postgres mysql mongo redis"
   "kafka neo4j"
+  "solr embedding"
   "config-service discovery-service"
   "profile-service"
   "identity-service"
   "chat-service storage-service"
-  "notification-service"
+  "notification-service post-service"
   "api-gateway"
 )
 
