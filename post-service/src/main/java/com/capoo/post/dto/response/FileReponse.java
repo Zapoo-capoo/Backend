@@ -9,7 +9,10 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FileReponse {
+    // Id of the file in storage-service
+    String id;
+    // IMAGE, VIDEO or FILE
+    String mediaType;
     String originalFileName;
-    String url;
 }
 

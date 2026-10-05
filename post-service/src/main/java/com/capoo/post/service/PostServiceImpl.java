@@ -9,6 +9,7 @@ import com.capoo.post.mapper.PostMapper;
 import com.capoo.post.repository.PostRepository;
 import com.capoo.post.repository.httpClient.ProfileClient;
 import com.capoo.post.repository.httpClient.FileClient;
+import com.capoo.post.search.PostSearchService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -41,6 +42,7 @@ public class PostServiceImpl implements PostService {
     ProfileClient profileClient;
     FileClient fileClient;
     KafkaTemplate<String,String> kafkaTemplate;
+    PostSearchService postSearchService;
     @Override
     public PostResponse createPost(PostRequest postRequest) {
         Authentication auth=SecurityContextHolder.getContext().getAuthentication();
@@ -52,18 +54,21 @@ public class PostServiceImpl implements PostService {
                 .modifiedDate(Instant.now())
                 .build();
         postRepository.save(post);
-        pulishCreatedPostEvent(post);
+        postSearchService.requestIndex(post);
+        //        pulishCreatedPostEvent(post);
         return postMapper.toPostResponse(post);
     }
     @Override
     public PostResponse createPostWithMedia(String content, MultipartFile file) {
         Authentication auth=SecurityContextHolder.getContext().getAuthentication();
-        String mediaUrl = null;
+        String mediaId = null;
+        String mediaType = null;
         if (file != null && !file.isEmpty()) {
             try {
                 var resp = fileClient.uploadMedia(file);
                 if (resp != null && resp.getResult() != null) {
-                    mediaUrl = resp.getResult().getUrl();
+                    mediaId = resp.getResult().getId();
+                    mediaType = resp.getResult().getMediaType();
                 }
             } catch (Exception ex) {
                 log.warn("Failed to upload media: {}", ex.getMessage());
@@ -72,14 +77,17 @@ public class PostServiceImpl implements PostService {
         Post post= Post.builder()
                 .content(content)
                 .userId(auth.getName())
-                .mediaUrl(mediaUrl)
+                .mediaId(mediaId)
+                .mediaType(mediaType)
                 .createdDate(Instant.now())
                 .modifiedDate(Instant.now())
                 .build();
         postRepository.save(post);
+        postSearchService.requestIndex(post);
         var postResponse = postMapper.toPostResponse(post);
-        postResponse.setMediaUrl(mediaUrl);
-       // pulishCreatedPostEvent(post);
+        postResponse.setMediaId(mediaId);
+        postResponse.setMediaType(mediaType);
+//        pulishCreatedPostEvent(post);
         return postResponse;
     }
     @Override
@@ -123,7 +131,8 @@ public class PostServiceImpl implements PostService {
                     postResponse.setCreated(dateTimeFormater.format(post.getCreatedDate()));
                     postResponse.setUsername(userName);
                     postResponse.setAvatar(avatar);
-                    postResponse.setMediaUrl(post.getMediaUrl());
+                    postResponse.setMediaId(post.getMediaId());
+                    postResponse.setMediaType(post.getMediaType());
                     return postResponse;
                 }).toList();
         return PageResponse.<PostResponse>builder()
@@ -185,7 +194,8 @@ public class PostServiceImpl implements PostService {
             } else {
                 postResponse.setUsername("Unknown");
             }
-            postResponse.setMediaUrl(post.getMediaUrl());
+            postResponse.setMediaId(post.getMediaId());
+            postResponse.setMediaType(post.getMediaType());
             return postResponse;
         }).toList();
 
@@ -211,6 +221,47 @@ public class PostServiceImpl implements PostService {
             throw new RuntimeException("You are not allowed to delete this post");
         }
         postRepository.delete(post);
+        postSearchService.requestDelete(postId);
+    }
+
+    @Override
+    public List<PostResponse> searchPosts(String query, int size) {
+        if (query == null || query.isBlank()) return List.of();
+
+        // Same audience as the feed: the friends of the current user and the user's own posts
+        List<UserProfileReponse> friends = null;
+        try {
+            var resp = profileClient.getMyFriends();
+            if (resp != null && resp.getResult() != null) friends = resp.getResult();
+        } catch (Exception ex) {
+            log.warn("Failed to fetch friends from profile service: {}", ex.getMessage());
+        }
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Set<String> userIds = new HashSet<>();
+        if (friends != null) friends.forEach(f -> userIds.add(f.getUserId()));
+        userIds.add(userId);
+        Map<String, UserProfileReponse> profileMap = friends == null
+                ? Map.of()
+                : friends.stream().collect(Collectors.toMap(UserProfileReponse::getUserId, p -> p, (a, b) -> a));
+
+        List<String> ids = postSearchService.search(query.trim(), userIds, Math.max(1, Math.min(size, 50)));
+        // Mongo does not keep the order of the ids it is given, the order of the search (best first) is restored here
+        Map<String, Post> posts = postRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Post::getId, p -> p));
+        return ids.stream()
+                .map(posts::get)
+                .filter(java.util.Objects::nonNull) // indexed but already deleted from Mongo
+                .map(post -> {
+                    var response = postMapper.toPostResponse(post);
+                    response.setCreated(dateTimeFormater.format(post.getCreatedDate()));
+                    var prof = profileMap.get(post.getUserId());
+                    response.setUsername(prof != null ? prof.getUsername() : "Unknown");
+                    response.setAvatar(prof != null ? prof.getAvatar() : null);
+                    response.setMediaId(post.getMediaId());
+                    response.setMediaType(post.getMediaType());
+                    return response;
+                })
+                .toList();
     }
 
 }

@@ -20,7 +20,11 @@ public class Post {
     String id;
     String userId;
     String content;
-    String mediaUrl;
+    // Id of the file in storage-service (not a link: the host of the link depends on where the app runs)
+    String mediaId;
+
+    // IMAGE, VIDEO or FILE
+    String mediaType;
     Instant createdDate;
     Instant modifiedDate;
 }

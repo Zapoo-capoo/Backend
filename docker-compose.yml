@@ -1,31 +1,6 @@
 name: zapooo
 version: "3.9"
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
-    container_name: elasticsearch
-    restart: always
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - xpack.security.http.ssl.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.9.0
-    container_name: kibana
-    restart: always
-    ports:
-      - "5601:5601"
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
   kafka:
     image: apache/kafka:3.7.0
     container_name: kafka
@@ -80,17 +55,6 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: root
     volumes:
       - mongo_data:/data/db
-  mysql:
-    image: mysql:8.0
-    container_name: mysql
-    restart: always
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: Tuanvip069@
-      MYSQL_DATABASE: identity
-    volumes:
-      - mysql_data:/var/lib/mysql
   neo4j:
     image: neo4j:5-community-ubi10
     container_name: neo4j
@@ -130,11 +94,35 @@ services:
       RI_REDIS_PASSWORD0: 123456
     depends_on:
       - redis
+  # Search engine of the posts (post-service). Standalone mode, one core called "posts"; its fields are created by
+  # post-service the first time it indexes or searches (SolrPostSearch). Admin UI: http://localhost:8983
+  solr:
+    image: solr:9.8
+    container_name: solr
+    restart: always
+    ports:
+      - "8983:8983"
+    command: solr-precreate posts
+    environment:
+      SOLR_HEAP: 512m
+    volumes:
+      - solr_data:/var/solr
+  # Turns text into vectors for the semantic search of the posts. HuggingFace Text Embeddings Inference serving a
+  # multilingual model (it understands Vietnamese), 384 dimensions. The first start downloads the model (~470MB)
+  embedding:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    container_name: embedding
+    restart: always
+    ports:
+      - "8089:80"
+    command: --model-id intfloat/multilingual-e5-small
+    volumes:
+      - embedding_data:/data
 volumes:
+  solr_data:
+  embedding_data:
   mongo_data:
   redis_data:
-  mysql_data:
   neo4j_data:
   neo4j_logs:
   kafka_data:
-  es_data:

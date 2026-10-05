@@ -16,5 +16,6 @@ public interface StorageClient {
 
     record Response<T>(Boolean success, T data, Object error) {}
 
-    record StoredFile(String id, String extension, @JsonProperty("original_name") String originalName) {}
+    record StoredFile(
+            String id, String extension, @JsonProperty("original_name") String originalName, String type) {}
 }

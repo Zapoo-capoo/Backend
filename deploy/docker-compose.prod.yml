@@ -290,6 +290,27 @@ services:
       retries: 40
       start_period: 60s
 
+  notification-service:
+    <<: *java-service
+    image: ${REGISTRY:-ghcr.io/zapoo-capoo/backend}/notification-service:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args: { MODULE: notification-service, JAVA_VERSION: "21" }
+    depends_on:
+      config-service: { condition: service_healthy }
+      discovery-service: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    mem_limit: 450m
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8082'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
   api-gateway:
     <<: *java-service
     image: ${REGISTRY:-ghcr.io/zapoo-capoo/backend}/api-gateway:${IMAGE_TAG:-latest}
@@ -304,6 +325,7 @@ services:
       profile-service: { condition: service_healthy }
       chat-service: { condition: service_healthy }
       storage-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
     ports:
       - "8888:8888"
     mem_limit: 512m

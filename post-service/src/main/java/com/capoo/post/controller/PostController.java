@@ -57,6 +57,16 @@ public class PostController {
                 .build();
     }
 
+    @GetMapping("/search")
+    ApiResponse<java.util.List<PostResponse>> searchPosts(
+            @RequestParam("q") String query,
+            @RequestParam(value="size",required = false,defaultValue = "10") int size
+    ) {
+        return ApiResponse.<java.util.List<PostResponse>>builder()
+                .result(postService.searchPosts(query, size))
+                .build();
+    }
+
     @DeleteMapping("/{id}")
     ApiResponse<Void> deletePost(@PathVariable("id") String id) {
         postService.deletePost(id);
