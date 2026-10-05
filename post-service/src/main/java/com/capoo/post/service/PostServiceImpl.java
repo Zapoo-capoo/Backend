@@ -79,7 +79,7 @@ public class PostServiceImpl implements PostService {
         postRepository.save(post);
         var postResponse = postMapper.toPostResponse(post);
         postResponse.setMediaUrl(mediaUrl);
-        pulishCreatedPostEvent(post);
+       // pulishCreatedPostEvent(post);
         return postResponse;
     }
     @Override

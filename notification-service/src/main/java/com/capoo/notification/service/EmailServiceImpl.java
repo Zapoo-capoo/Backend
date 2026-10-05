@@ -18,7 +18,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -43,6 +45,8 @@ public class EmailServiceImpl implements EmailService {
         try {
             return emailClient.sendEmail(apiKey, emailRequest);
         } catch (FeignException e) {
+            // Brevo explains the refusal in the response body (invalid key, sender not validated, IP not allowed...)
+            log.error("Brevo refused the email to {}: HTTP {} {}", request.getTo().getEmail(), e.status(), e.contentUTF8());
             throw new AppException(ErrorCode.CANNOT_SEND_EMAIL);
         }
     }
